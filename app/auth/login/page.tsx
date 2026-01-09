@@ -66,9 +66,9 @@ export default function LoginPage() {
             return response.data;
         },
         onSuccess: (data) => {
-            console.log(data);
+            const token = data?.data?.accessToken ?? "";
             toast.success("Login Berhasil");
-            localStorage.setItem("accessToken", data?.data?.accessToken);
+            localStorage.setItem("accessToken", token);
             router.push("/");
         },
         onError: (error) => {
