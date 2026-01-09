@@ -4,18 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 import Cookies from "js-cookie";
-import {
-    ArrowRight,
-    CheckCircle2,
-    LogIn,
-    Mail,
-    MessageCircle,
-    Moon,
-    RefreshCw,
-    ShieldCheck,
-    Sun,
-    XCircle,
-} from "lucide-react";
+import { CheckCircle2, LogIn, Mail, MessageCircle, Moon, RefreshCw, ShieldCheck, Sun, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
@@ -156,7 +145,6 @@ export default function VerifyEmailPage() {
                             >
                                 <LogIn className="mr-2 h-4 w-4" />
                                 Sign In to Account
-                                <ArrowRight className="ml-2 h-4 w-4" />
                             </Button>
                         ) : status === "failed" ? (
                             <div className="space-y-3">
@@ -181,12 +169,12 @@ export default function VerifyEmailPage() {
                                         Tip: If you don&apos;t see the email, check your spam or junk folder.
                                     </p>
                                 </div>
-                                <Button
-                                    variant="ghost"
+                                <Link
+                                    href="/auth/resend-verification"
                                     className="text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 w-full"
                                 >
                                     Resend Verification Link
-                                </Button>
+                                </Link>
                             </div>
                         )}
                     </div>
