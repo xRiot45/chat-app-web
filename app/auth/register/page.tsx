@@ -1,249 +1,438 @@
-'use client';
+"use client";
 
+import { CompanyLogo } from "@/components/company-logo";
+import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useTheme } from "@/hooks/useTheme";
+import { IApiErrorResponse } from "@/interfaces/api-error-response";
+import { BaseResponse } from "@/interfaces/base-response";
+import { cn } from "@/lib/utils";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
+import axios, { AxiosError } from "axios";
+import Cookies from "js-cookie";
 import {
-    Chrome,
-    Eye, EyeOff,
+    ArrowRight,
+    Eye,
+    EyeOff,
     Github,
-    Globe, HelpCircle,
+    HelpCircle,
     Loader2,
     Lock,
     Mail,
+    MessageCircle,
     Moon,
-    Shield,
+    ShieldCheck,
     Sun,
     User,
-    Zap
-} from 'lucide-react';
-import Link from 'next/link';
-import React, { useEffect, useState } from 'react';
+} from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import * as z from "zod";
 
-// --- MOCK COMPONENTS (Sama agar konsisten) ---
-const cn = (...classes: any[]) => classes.filter(Boolean).join(' ');
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
 
-const Button = ({ className, variant = 'primary', size = 'default', isLoading, icon: Icon, children, ...props }: any) => {
-  const variants: any = {
-    primary: "bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30 border-transparent",
-    outline: "border border-slate-200 dark:border-slate-700 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200",
-    secondary: "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white hover:opacity-90"
-  };
-  return (
-    <button 
-      className={cn("inline-flex items-center justify-center rounded-xl text-sm font-medium transition-all focus-visible:outline-none disabled:opacity-50 active:scale-95", variants[variant], size === 'default' ? "h-11 px-4" : "h-9 px-3", className)}
-      disabled={isLoading} {...props}
-    >
-      {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : Icon && <Icon className="mr-2 h-4 w-4" />}
-      {children}
-    </button>
-  );
-};
+const registerSchema = z.object({
+    fullName: z.string().min(2, { message: "Full name must be at least 2 characters" }),
+    username: z
+        .string()
+        .min(3, { message: "Username must be at least 3 characters" })
+        .regex(/^[a-zA-Z0-9_]+$/, { message: "Username can only contain letters, numbers, and underscores" }),
+    email: z.string().email({ message: "Please enter a valid email address" }),
+    password: z
+        .string()
+        .min(8, { message: "Password must be at least 8 characters" })
+        .regex(/[A-Z]/, { message: "Password must contain at least one uppercase letter" })
+        .regex(/[0-9]/, { message: "Password must contain at least one number" }),
+});
 
-const Input = ({ className, icon: Icon, label, id, ...props }: any) => (
-  <div className="space-y-2">
-    {label && <label htmlFor={id} className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</label>}
-    <div className="relative group">
-      {Icon && <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />}
-      <input 
-        id={id}
-        className={cn("flex h-11 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 py-2 text-sm placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 transition-all pl-10", className)} 
-        {...props} 
-      />
-    </div>
-  </div>
-);
-
-const FeatureItem = ({ icon: Icon, title, desc }: any) => (
-    <div className="flex gap-4 items-start p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors backdrop-blur-sm">
-        <div className="p-2 rounded-lg bg-indigo-500/20 text-indigo-300">
-            <Icon className="w-5 h-5" />
-        </div>
-        <div>
-            <h4 className="font-bold text-white text-sm">{title}</h4>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">{desc}</p>
-        </div>
-    </div>
-);
-
-// --- REGISTER PAGE ---
+type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
-  const [isDarkMode, setIsDarkMode] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [password, setPassword] = useState("");
+    const router = useRouter();
+    const { isDarkMode, toggleTheme } = useTheme();
+    const [showPassword, setShowPassword] = useState(false);
 
-  useEffect(() => {
-    if (isDarkMode) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
-  }, [isDarkMode]);
+    const form = useForm<RegisterFormValues>({
+        resolver: zodResolver(registerSchema),
+        defaultValues: {
+            fullName: "",
+            username: "",
+            email: "",
+            password: "",
+        },
+    });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 2000);
-  };
+    const registerMutation = useMutation<BaseResponse, AxiosError<IApiErrorResponse>, RegisterFormValues>({
+        mutationFn: async (data) => {
+            const response = await axios.post(`${API_BASE_URL}/api/auth/register`, data);
+            return response.data;
+        },
+        onSuccess: () => {
+            Cookies.set("just_registered", "true", { expires: 1 / 144 });
+            toast.success("Akun Berhasil Dibuat", {
+                description: "Silahkan Verifikasi Email Anda",
+            });
 
-  // Logic Password Strength sederhana
-  const strength = Math.min(password.length * 12, 100);
-  const strengthColor = strength < 40 ? 'bg-rose-500' : strength < 80 ? 'bg-amber-500' : 'bg-emerald-500';
+            router.push("/auth/verify-email");
+        },
+        onError: (error) => {
+            const errorMessage = error.response?.data?.message || "Registration failed. Please try again.";
+            toast.error("Registration Failed", {
+                description: errorMessage,
+            });
+        },
+    });
 
-  return (
-    <div className={`min-h-screen w-full flex transition-colors duration-500 ${isDarkMode ? 'dark bg-[#0a0a0c] text-slate-100' : 'bg-white text-slate-900'}`}>
-      
-      {/* LEFT SIDE - VISUAL CONTENT (Same Layout, Different Content) */}
-      <div className="hidden lg:flex w-[55%] relative overflow-hidden bg-[#0f1115] flex-col justify-between p-16">
-         {/* Background FX - slightly different color theme */}
-         <div className="absolute top-[-20%] right-[-20%] w-[80%] h-[80%] bg-violet-600/20 rounded-full blur-[150px] animate-pulse" />
-         <div className="absolute bottom-[-10%] left-[-10%] w-[60%] h-[60%] bg-indigo-600/20 rounded-full blur-[150px]" />
-         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
+    const onSubmit = (data: RegisterFormValues) => {
+        registerMutation.mutate(data);
+    };
 
-         {/* Brand */}
-         <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-8">
-               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
-                  <Shield className="w-6 h-6 text-white" />
-               </div>
-               <span className="font-bold text-2xl tracking-tight text-white">NexusChat</span>
-            </div>
-         </div>
+    return (
+        <div
+            className={cn(
+                "min-h-screen w-full flex font-sans selection:bg-indigo-500/30",
+                isDarkMode ? "dark bg-[#0a0a0c] text-slate-100" : "bg-slate-50 text-slate-900",
+            )}
+        >
+            {/* --- LEFT SIDE (Bento Grid Visuals) --- */}
+            <div className="hidden lg:flex w-[60%] p-6 relative flex-col justify-center">
+                {/* Main Container Card */}
+                <div className="w-full h-full rounded-[2.5rem] bg-[#111318] relative overflow-hidden border border-white/5 shadow-2xl flex flex-col p-12 justify-between">
+                    {/* Background Gradients */}
+                    <div className="absolute top-[-20%] right-[-10%] w-150 h-150 bg-indigo-500/20 rounded-full blur-[130px] mix-blend-screen animate-pulse" />
+                    <div className="absolute bottom-[-10%] left-[-10%] w-125 h-125 bg-purple-600/10 rounded-full blur-[120px] mix-blend-screen" />
+                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay"></div>
 
-         {/* Feature Grid Content */}
-         <div className="relative z-10 max-w-lg space-y-6">
-            <h2 className="text-3xl font-bold leading-tight text-white mb-6">
-               Join the <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-400">Secure Network</span>
-            </h2>
-            
-            <div className="grid gap-4">
-                <FeatureItem 
-                    icon={Shield} 
-                    title="End-to-End Encryption" 
-                    desc="Your messages are encrypted before they leave your device. Only you and the recipient can read them." 
-                />
-                <FeatureItem 
-                    icon={Zap} 
-                    title="Lightning Fast" 
-                    desc="Powered by Edge Computing to deliver messages in milliseconds, no matter where you are." 
-                />
-                <FeatureItem 
-                    icon={Globe} 
-                    title="Global Decentralization" 
-                    desc="No central server failure points. Your data is distributed and redundant." 
-                />
-            </div>
-         </div>
-
-         {/* Community Footer */}
-         <div className="relative z-10 pt-8 border-t border-white/10 flex items-center justify-between">
-            <div className="flex -space-x-4">
-               {[1,2,3,4].map(i => (
-                  <img key={i} src={`https://i.pravatar.cc/150?u=${i+10}`} className="w-10 h-10 rounded-full border-2 border-[#0f1115]" alt="" />
-               ))}
-               <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-[#0f1115] flex items-center justify-center text-xs font-bold text-white">
-                  +2k
-               </div>
-            </div>
-            <div className="text-right">
-                <p className="text-white font-bold text-sm">Join 10,000+ Developers</p>
-                <p className="text-slate-400 text-xs">Building the future together</p>
-            </div>
-         </div>
-      </div>
-
-      {/* RIGHT SIDE - REGISTER FORM */}
-      <div className="flex-1 flex flex-col relative bg-white dark:bg-[#0a0a0c]">
-         
-         {/* Top Bar */}
-         <div className="absolute top-0 right-0 p-6 flex items-center gap-4">
-            <span className="text-sm text-slate-500">Already a member?</span>
-            <Link href="/auth/login">
-               <Button variant="ghost" className="text-indigo-600 dark:text-indigo-400">Sign In</Button>
-            </Link>
-            <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 rounded-full bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors">
-               {isDarkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-slate-600" />}
-            </button>
-         </div>
-
-         <div className="flex-1 flex items-center justify-center p-8 overflow-y-auto">
-            <div className="w-full max-w-[420px] space-y-6 pt-10">
-               
-               <div className="space-y-2">
-                  <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Create Account</h1>
-                  <p className="text-slate-500 dark:text-slate-400">Start your 30-day free trial. No credit card required.</p>
-               </div>
-
-               <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input id="full_name" type="text" label="Full Name" placeholder="name@company.com" icon={User} required />
-
-                  <Input id="username" type="text" label="Username" placeholder="name@company.com" icon={User} required />
-                  </div>
-
-                  <Input id="email" type="email" label="Email Address" placeholder="name@company.com" icon={Mail} required />
-                  
-                  <div className="space-y-2">
-                     <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Password</label>
-                     <div className="relative">
-                        <Input 
-                           id="password" 
-                           type={showPassword ? "text" : "password"} 
-                           placeholder="Create a password" 
-                           icon={Lock} 
-                           value={password}
-                           onChange={(e: any) => setPassword(e.target.value)}
-                           className="pr-10"
-                           required 
-                        />
-                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 text-slate-400 hover:text-indigo-500">
-                           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                     </div>
-                     {/* Strength Bar */}
-                     {password.length > 0 && (
-                        <div className="space-y-1">
-                            <div className="h-1 w-full bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
-                                <div className={`h-full transition-all duration-500 ${strengthColor}`} style={{ width: `${strength}%` }}></div>
+                    {/* Header Text */}
+                    <div className="relative z-10 max-w-xl space-y-6">
+                        <div className="flex items-center gap-3 mb-8">
+                            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                                <MessageCircle className="w-6 h-6 text-white" />
                             </div>
-                            <p className="text-[10px] text-slate-500 text-right">
-                                {strength < 40 ? 'Weak' : strength < 80 ? 'Good' : 'Strong'}
-                            </p>
+                            <span className="font-bold text-2xl tracking-tight text-white">NexusChat</span>
                         </div>
-                     )}
-                  </div>
+                        <h1 className="text-5xl font-bold leading-[1.1] text-white tracking-tight">
+                            Join the{" "}
+                            <span className="text-transparent bg-clip-text bg-linear-to-r from-emerald-400 to-cyan-400">
+                                fastest growing
+                            </span>{" "}
+                            community.
+                        </h1>
+                        <p className="text-lg text-slate-400 leading-relaxed max-w-md">
+                            Unlock the power of decentralized collaboration. Build, ship, and scale with tools designed
+                            for modern engineering teams.
+                        </p>
+                    </div>
 
-                  {/* Terms Checkbox */}
-                  <div className="flex items-start gap-2 pt-2">
-                     <div className="mt-1">
-                        <input type="checkbox" id="terms" className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 bg-transparent" />
-                     </div>
-                     <label htmlFor="terms" className="text-xs text-slate-600 dark:text-slate-400 leading-tight">
-                        I agree to the <Link href="#" className="text-indigo-500 hover:underline">Terms of Service</Link> and <Link href="#" className="text-indigo-500 hover:underline">Privacy Policy</Link>.
-                     </label>
-                  </div>
+                    {/* VISUAL: Widget Grid (Bento Style) */}
+                    <div className="relative z-10 mt-12 grid grid-cols-2 gap-4 w-full max-w-lg self-center opacity-90">
+                        {/* Widget 1 */}
+                        <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-colors">
+                            <div className="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center mb-3">
+                                <ShieldCheck className="w-5 h-5 text-indigo-400" />
+                            </div>
+                            <h3 className="text-white font-semibold">Enterprise Security</h3>
+                            <p className="text-xs text-slate-400 mt-1">SOC2 Type II Certified</p>
+                        </div>
+                        {/* Widget 2 */}
+                        <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-colors translate-y-4">
+                            <div className="w-10 h-10 rounded-lg bg-pink-500/20 flex items-center justify-center mb-3">
+                                <User className="w-5 h-5 text-pink-400" />
+                            </div>
+                            <h3 className="text-white font-semibold">Real-time Collab</h3>
+                            <p className="text-xs text-slate-400 mt-1">Multiplayer by default</p>
+                        </div>
+                    </div>
 
-                  <Button type="submit" className="w-full h-12 text-base shadow-indigo-500/20" isLoading={isLoading}>Create Account</Button>
-               </form>
-
-               <div className="relative py-2">
-                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-slate-200 dark:border-white/10" /></div>
-                  <div className="relative flex justify-center text-xs uppercase"><span className="bg-white dark:bg-[#0a0a0c] px-2 text-slate-500">Or sign up with</span></div>
-               </div>
-
-               <div className="grid grid-cols-2 gap-3">
-                  <Button variant="outline" icon={Github}>Github</Button>
-                  <Button variant="outline" icon={Chrome}>Google</Button>
-               </div>
+                    {/* Footer Quote */}
+                    <div className="relative z-10 flex items-center gap-4 mt-8 pt-8 border-t border-white/5">
+                        <div className="flex -space-x-3">
+                            {[1, 2, 3].map((i) => (
+                                <div
+                                    key={i}
+                                    className="w-10 h-10 rounded-full border-2 border-[#111318] bg-slate-700 overflow-hidden relative"
+                                >
+                                    <Image
+                                        src={`https://i.pravatar.cc/150?u=${i + 20}`}
+                                        alt="User"
+                                        fill
+                                        className="object-cover"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                        <div className="text-sm">
+                            <p className="text-white font-semibold">Join 10,000+ Developers</p>
+                            <p className="text-slate-500">Building the future of web</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-         </div>
 
-         {/* Footer Links (Sama Persis dengan Login) */}
-         <div className="p-6 text-center">
-            <div className="flex justify-center gap-6 text-xs text-slate-500">
-               <Link href="#" className="hover:text-indigo-500">Privacy Policy</Link>
-               <Link href="#" className="hover:text-indigo-500">Terms of Service</Link>
-               <Link href="#" className="hover:text-indigo-500 flex items-center gap-1"><HelpCircle className="w-3 h-3" /> Help Center</Link>
+            {/* --- RIGHT SIDE (Clean Form) --- */}
+            <div className="flex-1 flex flex-col justify-center items-center p-6 lg:p-12 relative bg-white dark:bg-[#0a0a0c]">
+                {/* Top Navigation */}
+                <div className="absolute top-6 right-6 lg:top-12 lg:right-12 flex items-center gap-4 z-20">
+                    <span className="text-sm text-slate-500 hidden sm:block">Already a member?</span>
+                    <Link href="/auth/login">
+                        <Button
+                            variant="ghost"
+                            className="text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+                        >
+                            Sign In
+                        </Button>
+                    </Link>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={toggleTheme}
+                        className="rounded-full w-10 h-10 border-slate-200 dark:border-white/10 bg-transparent hover:bg-slate-100 dark:hover:bg-white/5 transition-all"
+                    >
+                        {isDarkMode ? (
+                            <Sun className="w-4 h-4 text-amber-400" />
+                        ) : (
+                            <Moon className="w-4 h-4 text-slate-600" />
+                        )}
+                    </Button>
+                </div>
+
+                <div className="w-full max-w-110 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    {/* Header Mobile Brand */}
+                    <div className="lg:hidden flex items-center gap-2 mb-4">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+                            <MessageCircle className="w-5 h-5 text-white" />
+                        </div>
+                        <span className="font-bold text-xl dark:text-white">NexusChat</span>
+                    </div>
+
+                    {/* Greeting */}
+                    <div className="space-y-2">
+                        <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+                            Create an account
+                        </h2>
+                        <p className="text-slate-500 dark:text-slate-400 text-base">
+                            Enter your details to get started with your free trial.
+                        </p>
+                    </div>
+
+                    {/* Social Signup (Dummy) */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <Button
+                            variant="outline"
+                            className="h-11 rounded-xl bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200"
+                        >
+                            <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+                                <path
+                                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                                    fill="#4285F4"
+                                />
+                                <path
+                                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                                    fill="#34A853"
+                                />
+                                <path
+                                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                                    fill="#FBBC05"
+                                />
+                                <path
+                                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                                    fill="#EA4335"
+                                />
+                            </svg>
+                            Google
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="h-11 rounded-xl bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200"
+                        >
+                            <Github className="w-4 h-4 mr-2" />
+                            GitHub
+                        </Button>
+                    </div>
+
+                    <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t border-slate-200 dark:border-white/10" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-slate-50 dark:bg-[#0a0a0c] px-2 text-slate-400">
+                                Or register with email
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* FORM */}
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                            {/* Group: Full Name & Username */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="fullName"
+                                    render={({ field }) => (
+                                        <FormItem className="space-y-1">
+                                            <FormLabel className="text-slate-700 dark:text-slate-300 font-semibold text-sm ml-1">
+                                                Full Name
+                                            </FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    placeholder="John Doe"
+                                                    className="bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 focus:bg-white dark:focus:bg-black/40 focus:border-indigo-500/50 h-11 rounded-xl shadow-sm transition-all"
+                                                    {...field}
+                                                />
+                                            </FormControl>
+                                            <FormMessage className="text-xs ml-1" />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="username"
+                                    render={({ field }) => (
+                                        <FormItem className="space-y-1">
+                                            <FormLabel className="text-slate-700 dark:text-slate-300 font-semibold text-sm ml-1">
+                                                Username
+                                            </FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    placeholder="johndoe123"
+                                                    className="bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 focus:bg-white dark:focus:bg-black/40 focus:border-indigo-500/50 h-11 rounded-xl shadow-sm transition-all"
+                                                    {...field}
+                                                />
+                                            </FormControl>
+                                            <FormMessage className="text-xs ml-1" />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+
+                            {/* Email */}
+                            <FormField
+                                control={form.control}
+                                name="email"
+                                render={({ field }) => (
+                                    <FormItem className="space-y-1">
+                                        <FormLabel className="text-slate-700 dark:text-slate-300 font-semibold text-sm ml-1">
+                                            Email
+                                        </FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 z-10" />
+                                                <Input
+                                                    type="email"
+                                                    placeholder="name@company.com"
+                                                    className="bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 focus:bg-white dark:focus:bg-black/40 focus:border-indigo-500/50 h-11 rounded-xl pl-10 shadow-sm transition-all"
+                                                    {...field}
+                                                />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage className="text-xs ml-1" />
+                                    </FormItem>
+                                )}
+                            />
+
+                            {/* Password */}
+                            <FormField
+                                control={form.control}
+                                name="password"
+                                render={({ field }) => (
+                                    <FormItem className="space-y-1">
+                                        <FormLabel className="text-slate-700 dark:text-slate-300 font-semibold text-sm ml-1">
+                                            Password
+                                        </FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 z-10" />
+                                                <Input
+                                                    type={showPassword ? "text" : "password"}
+                                                    placeholder="Create a strong password"
+                                                    className="bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 focus:bg-white dark:focus:bg-black/40 focus:border-indigo-500/50 h-11 rounded-xl pl-10 pr-10 shadow-sm transition-all"
+                                                    {...field}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowPassword(!showPassword)}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-500 focus:outline-none p-1 rounded-md hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                                                >
+                                                    {showPassword ? (
+                                                        <EyeOff className="w-4 h-4" />
+                                                    ) : (
+                                                        <Eye className="w-4 h-4" />
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage className="text-xs ml-1" />
+                                    </FormItem>
+                                )}
+                            />
+
+                            {/* Terms Text */}
+                            <div className="text-xs text-slate-500 dark:text-slate-400 ml-1">
+                                By clicking continue, you agree to our{" "}
+                                <Link href="#" className="underline hover:text-indigo-500">
+                                    Terms of Service
+                                </Link>{" "}
+                                and{" "}
+                                <Link href="#" className="underline hover:text-indigo-500">
+                                    Privacy Policy
+                                </Link>
+                                .
+                            </div>
+
+                            {/* Global Error Message */}
+                            {registerMutation.isError && (
+                                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-sm flex items-center gap-3 animate-in fade-in">
+                                    <HelpCircle className="w-4 h-4 shrink-0" />
+                                    <span>
+                                        {registerMutation.error?.response?.data?.message || "Something went wrong."}
+                                    </span>
+                                </div>
+                            )}
+
+                            <Button
+                                type="submit"
+                                disabled={registerMutation.isPending}
+                                className="w-full h-12 text-base font-semibold shadow-xl shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all hover:scale-[1.02] active:scale-95 group"
+                            >
+                                {registerMutation.isPending ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                        Creating Account...
+                                    </>
+                                ) : (
+                                    <>
+                                        Create Account
+                                        <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                                    </>
+                                )}
+                            </Button>
+                        </form>
+                    </Form>
+
+                    {/* Trusted By Section */}
+                    <div className="pt-6 border-t border-slate-200 dark:border-white/5">
+                        <p className="text-xs text-center text-slate-400 uppercase tracking-widest font-semibold mb-4">
+                            Trusted by modern teams
+                        </p>
+                        <div className="flex justify-between px-2 opacity-70">
+                            <CompanyLogo name="Acme" />
+                            <CompanyLogo name="Stark" />
+                            <CompanyLogo name="Wayne" />
+                            <CompanyLogo name="Cyber" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer text */}
+                <div className="absolute bottom-6 text-xs text-slate-400 hidden lg:block">© 2026 NexusChat Inc.</div>
             </div>
-         </div>
-
-      </div>
-    </div>
-  );
+        </div>
+    );
 }
