@@ -1,3 +1,7 @@
-export interface BaseResponse<T> {
-    data: T;
+// Tambahkan "= null" di sini
+export interface BaseResponse<T = null> {
+    status: boolean;
+    statusCode: number;
+    message: string;
+    data?: T;
 }
