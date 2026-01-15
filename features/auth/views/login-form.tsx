@@ -22,7 +22,7 @@ const initialState: ActionState = {
     message: "",
 };
 
-export const LoginForm = () => {
+export const LoginView = () => {
     const router = useRouter();
     const [showPassword, setShowPassword] = useState(false);
     const { isDarkMode, toggleTheme, mounted } = useTheme();

@@ -36,7 +36,7 @@ const initialState: ActionState = {
     message: "",
 };
 
-export const RegisterForm = () => {
+export const RegisterView = () => {
     const router = useRouter();
     const { isDarkMode, toggleTheme } = useTheme();
     const [showPassword, setShowPassword] = useState(false);
