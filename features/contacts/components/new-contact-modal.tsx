@@ -61,12 +61,12 @@ export function NewContactModal({ isOpen, onClose }: NewContactModalProps) {
     }, [isOpen, form]);
 
     useEffect(() => {
-        if (state.status === "success") {
+        if (state.status === "success" && isOpen) {
             toast.success("Kontak Ditambahkan", {
-                description: state.message || "User berhasil ditambahkan ke kontak Anda.",
+                description: state.message || "User berhasil ditambahkan.",
             });
             onClose(false);
-        } else if (state.status === "error") {
+        } else if (state.status === "error" && isOpen) {
             toast.error("Gagal Menambahkan", {
                 description: state.message || "Terjadi kesalahan.",
             });
@@ -82,7 +82,7 @@ export function NewContactModal({ isOpen, onClose }: NewContactModalProps) {
                 }
             }
         }
-    }, [state, onClose, form]);
+    }, [state, onClose, isOpen, form]);
 
     useEffect(() => {
         if (!usernameQuery.trim()) {
