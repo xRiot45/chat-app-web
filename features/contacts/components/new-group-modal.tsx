@@ -18,12 +18,12 @@ import { CONTACTS } from "@/constants/contacts";
 import { Camera, Search } from "lucide-react";
 import { useState } from "react";
 
-interface CreateGroupModalProps {
+interface NewGroupModalProps {
     isOpen: boolean;
     onClose: (open: boolean) => void;
 }
 
-export function CreateGroupModal({ isOpen, onClose }: CreateGroupModalProps) {
+export function NewGroupModal({ isOpen, onClose }: NewGroupModalProps) {
     const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
 
     const toggleMember = (id: number) => {

@@ -1,6 +1,6 @@
 import { STORIES } from "@/constants/stories";
 import { cn } from "@/lib/utils";
-import { Avatar } from "./ui/avatar";
+import { Avatar } from "./avatar";
 
 export default function Stories({ openStory }: { openStory: (index: number) => void }) {
     return (

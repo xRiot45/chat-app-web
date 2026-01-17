@@ -27,6 +27,7 @@ import {
     Heart,
     Image as ImageIcon,
     LogOut,
+    MessageCircle,
     MessageSquare,
     Mic,
     MoreHorizontal,
@@ -535,14 +536,14 @@ export default function UltimateChatApp() {
                         <div className="w-32 h-32 relative mb-6">
                             <div className="absolute inset-0 bg-indigo-500/30 blur-3xl rounded-full animate-pulse"></div>
                             <div className="relative z-10 w-full h-full bg-linear-to-tr from-indigo-500 to-violet-600 rounded-3xl flex items-center justify-center shadow-2xl rotate-3 transform hover:rotate-6 transition-transform duration-500">
-                                <MessageSquare className="w-14 h-14 text-white" />
+                                <MessageCircle className="w-14 h-14 text-white" />
                             </div>
                         </div>
                         <h2 className="text-3xl font-bold mb-3 text-slate-800 dark:text-white">
-                            Selamat Datang di Gemini Chat
+                            Selamat Datang di Nexus Chat
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400 max-w-md leading-relaxed mb-8">
-                            Platform komunikasi Web3 yang aman, cepat, dan modern.
+                            Platform komunikasi yang aman, cepat, dan modern.
                             <br />
                             Mulai percakapan dengan memilih kontak di sebelah kiri.
                         </p>

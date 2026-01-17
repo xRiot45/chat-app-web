@@ -29,7 +29,7 @@ export async function searchUsersAction(prevState: ActionState, formData: FormDa
             return { error: "Unauthorized", message: "Anda harus login terlebih dahulu." };
         }
 
-        const response = await fetch(`${API_URL}/api/users/search?query=${encodeURIComponent(searchQuery)}`, {
+        const response = await fetch(`${API_URL}/api/users/search?q=${encodeURIComponent(searchQuery)}`, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -46,8 +46,8 @@ export async function searchUsersAction(prevState: ActionState, formData: FormDa
             };
         }
 
-        // 4. Return data sukses
-        const users: UserSearchResponse[] = await response.json();
+        const responseBody = await response.json();
+        const users: UserSearchResponse[] = responseBody.data || [];
 
         return {
             data: users,

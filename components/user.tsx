@@ -1,4 +1,4 @@
-import { Avatar } from "./ui/avatar";
+import { Avatar } from "./avatar";
 
 export default function User() {
     return (

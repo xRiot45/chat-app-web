@@ -6,17 +6,15 @@ import { CONTACTS } from "@/constants/contacts";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, UserPlus, Users } from "lucide-react";
 import { useMemo, useState } from "react";
-import { CreateContactModal } from "../components/create-contact-modal";
-import { CreateGroupModal } from "../components/create-group-modal";
+import { NewContactModal } from "../components/new-contact-modal";
+import { NewGroupModal } from "../components/new-group-modal";
 
-export default function ContactListsView({
-    isAddModalOpen,
-    setIsAddModalOpen,
-}: {
+interface ContactListsViewProps {
     isAddModalOpen: boolean;
     setIsAddModalOpen: (value: boolean) => void;
-}) {
-    // --- State untuk Modal ---
+}
+
+export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: ContactListsViewProps) {
     const [isContactModalOpen, setContactModalOpen] = useState(false);
     const [isGroupModalOpen, setGroupModalOpen] = useState(false);
 
@@ -133,9 +131,9 @@ export default function ContactListsView({
             </div>
 
             {/* Render Modals */}
-            <CreateContactModal isOpen={isContactModalOpen} onClose={setContactModalOpen} />
+            <NewContactModal isOpen={isContactModalOpen} onClose={setContactModalOpen} />
 
-            <CreateGroupModal isOpen={isGroupModalOpen} onClose={setGroupModalOpen} />
+            <NewGroupModal isOpen={isGroupModalOpen} onClose={setGroupModalOpen} />
         </>
     );
 }

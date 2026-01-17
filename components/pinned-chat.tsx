@@ -2,7 +2,8 @@ import { IPinnedChat, PINNED_CHATS } from "@/constants/pinned-chat";
 import { cn } from "@/lib/utils";
 import { Pin } from "lucide-react";
 import { Badge } from "./badge";
-import { Avatar } from "./ui/avatar";
+import { Avatar } from "./avatar";
+
 
 interface PinnedChatProps {
     handleChatSelect: (chat: IPinnedChat) => void;
