@@ -1,9 +1,15 @@
-"use client";
+"use clietn";
 
 import SearchInput from "@/components/search-input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Loader2, RefreshCw, UserPlus, Users } from "lucide-react";
+import { ArrowLeft, Loader2, MoreVertical, Pencil, RefreshCw, Trash, UserPlus, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { findAllContactAction } from "../actions/find-all-contact-action";
@@ -13,7 +19,7 @@ import { Contact } from "../interfaces/contact";
 
 interface ContactListsViewProps {
     isAddModalOpen: boolean;
-    setIsAddModalOpen: (value: boolean) => void;
+    setIsAddModalOpen: (open: boolean) => void;
 }
 
 export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: ContactListsViewProps) {
@@ -21,6 +27,8 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: 
     const [isGroupModalOpen, setGroupModalOpen] = useState(false);
 
     const [contactModalKey, setContactModalKey] = useState(0);
+
+    const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -50,25 +58,50 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: 
         }
     }, [isAddModalOpen, fetchContacts]);
 
-    // --- PERBAIKAN UTAMA 1: useCallback ---
-    // Mencegah fungsi ini dibuat ulang setiap render, memutus siklus loop
+    // Handler Menutup Modal
     const handleCloseContactModal = useCallback(
         (open: boolean) => {
             setContactModalOpen(open);
             if (!open) {
+                setSelectedContact(null);
                 fetchContacts();
             }
         },
         [fetchContacts],
     );
 
-    // --- PERBAIKAN UTAMA 2: Handler Pembuka ---
-    // Saat membuka, kita ubah Key agar komponen Modal di-mount ulang dari nol (Reset State Action)
-    const handleOpenContactModal = () => {
+    // Handler Buka Modal "New Contact"
+    const handleOpenNewContactModal = () => {
+        setSelectedContact(null);
         setContactModalKey((prev) => prev + 1);
         setContactModalOpen(true);
     };
 
+    // Handler Buka Modal "Edit Contact"
+    const handleEditContact = (contact: Contact) => {
+        setSelectedContact(contact);
+        setContactModalKey((prev) => prev + 1);
+        setContactModalOpen(true);
+    };
+
+    // Handler Delete Contact
+    const handleDeleteContact = async (id: string) => {
+        if (!confirm("Apakah Anda yakin ingin menghapus kontak ini?")) return;
+
+        // try {
+        //     const result = await deleteContactAction(id);
+        //     if (result.status === "success") {
+        //         toast.success("Berhasil", { description: result.message });
+        //         fetchContacts(); // Refresh list
+        //     } else {
+        //         toast.error("Gagal", { description: result.message });
+        //     }
+        // } catch (error) {
+        //     toast.error("Error", { description: "Gagal menghubungi server" });
+        // }
+    };
+
+    // Grouping Logic
     const groupedContacts = useMemo(() => {
         const groups: Record<string, Contact[]> = {};
         const getDisplayName = (c: Contact) => c.alias || c.contactUser.fullName || c.contactUser.username;
@@ -143,8 +176,7 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: 
                         </button>
 
                         <button
-                            // Gunakan handler baru yang mereset Key
-                            onClick={handleOpenContactModal}
+                            onClick={handleOpenNewContactModal}
                             className="w-full flex items-center gap-4 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-left group"
                         >
                             <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-300 group-hover:scale-110 transition-transform">
@@ -178,26 +210,61 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: 
                                         {letter}
                                     </div>
 
-                                    <div className="px-4 space-y-4">
+                                    <div className="px-4 space-y-4 mt-4">
                                         {groupedContacts[letter].map((contact) => (
                                             <div
                                                 key={contact.id}
-                                                className="flex items-center gap-4 cursor-pointer group"
+                                                className="flex gap-4 cursor-pointer group items-center relative pr-8"
                                             >
-                                                <Avatar className="w-10 h-10">
+                                                <Avatar className="w-10 h-10 shrink-0">
                                                     <AvatarImage src={contact.contactUser.avatarUrl || ""} />
                                                     <AvatarFallback>
                                                         {contact.contactUser.username.charAt(0).toUpperCase()}
                                                     </AvatarFallback>
                                                 </Avatar>
 
-                                                <div className="flex-1 border-b border-slate-100 dark:border-white/5 pb-3 group-last:border-0">
-                                                    <h4 className="font-semibold text-slate-800 dark:text-slate-100 text-sm">
-                                                        {contact.alias}
+                                                <div className="flex-1 border-b border-slate-100 dark:border-white/5 pb-3 group-last:border-0 min-w-0">
+                                                    <h4 className="font-semibold text-slate-800 dark:text-slate-100 text-sm truncate">
+                                                        {contact.alias ||
+                                                            contact.contactUser.fullName ||
+                                                            contact.contactUser.username}
                                                     </h4>
                                                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
                                                         {contact.contactUser.bio ?? "Hi there! I'm using NexusChat."}
                                                     </p>
+                                                </div>
+
+                                                {/* Dropdown Menu Action */}
+                                                <div
+                                                    className="absolute right-0 top-1/2 -translate-y-1/2 p-2"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <button className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors focus:outline-none">
+                                                                <MoreVertical className="w-4 h-4" />
+                                                            </button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent
+                                                            align="end"
+                                                            className="w-40 bg-white dark:bg-[#181a20] border-slate-200 dark:border-white/10"
+                                                        >
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleEditContact(contact)}
+                                                                className="cursor-pointer focus:bg-slate-100 dark:focus:bg-white/5"
+                                                            >
+                                                                <Pencil className="w-4 h-4 mr-2" />
+                                                                Edit Contact
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleDeleteContact(contact.id)}
+                                                                className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/10 cursor-pointer"
+                                                            >
+                                                                <Trash className="w-4 h-4 mr-2" />
+                                                                Delete Contact
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                 </div>
                                             </div>
                                         ))}
@@ -209,7 +276,13 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: 
                 </div>
             </div>
 
-            <NewContactModal key={contactModalKey} isOpen={isContactModalOpen} onClose={handleCloseContactModal} />
+            {/* Modal Components */}
+            <NewContactModal
+                key={contactModalKey}
+                isOpen={isContactModalOpen}
+                onClose={handleCloseContactModal}
+                selectedContact={selectedContact}
+            />
 
             <NewGroupModal isOpen={isGroupModalOpen} onClose={setGroupModalOpen} />
         </>
