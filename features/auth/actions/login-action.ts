@@ -34,27 +34,36 @@ export async function loginAction(prevState: ActionState, formData: FormData): P
         if (!response.ok) {
             return {
                 status: "error",
-                message: data.message || "Email atau password salah",
+                message: data.message || "Email or password invalid",
+            };
+        }
+
+        if (!data?.data.accessToken) {
+            return {
+                status: "error",
+                message: "Failed to take access token from the server",
             };
         }
 
         const cookieStore = await cookies();
-        cookieStore.set("accessToken", data.accessToken, {
+
+        cookieStore.set("accessToken", data?.data?.accessToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             path: "/",
             maxAge: 60 * 60 * 24,
+            sameSite: "lax",
         });
 
         return {
             status: "success",
-            message: "Login berhasil! Mengalihkan...",
+            message: "Login successfully, redirecting...",
         };
     } catch (error) {
         console.error("Login Error:", error);
         return {
             status: "error",
-            message: "Terjadi kesalahan pada server",
+            message: "Failed to login",
         };
     }
 }

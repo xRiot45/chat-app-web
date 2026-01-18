@@ -1,8 +1,8 @@
 import { ALL_CHATS, IAllChat } from "@/constants/all-chat";
 import { cn } from "@/lib/utils";
 import { MessageSquare } from "lucide-react";
+import { Avatar } from "./avatar";
 import { Badge } from "./badge";
-import { Avatar } from "./ui/avatar";
 
 interface AllChatProps {
     handleChatSelect: (chat: IAllChat) => void;
