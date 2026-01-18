@@ -1,4 +1,4 @@
-"use clietn";
+"use client";
 
 import SearchInput from "@/components/search-input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,7 +12,9 @@ import { cn } from "@/lib/utils";
 import { ArrowLeft, Loader2, MoreVertical, Pencil, RefreshCw, Trash, UserPlus, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { deleteContactAction } from "../actions/delete-contact-action";
 import { findAllContactAction } from "../actions/find-all-contact-action";
+import { DeleteContactAlert } from "../components/delete-contact-alert";
 import { NewContactModal } from "../components/new-contact-modal";
 import { NewGroupModal } from "../components/new-group-modal";
 import { Contact } from "../interfaces/contact";
@@ -26,8 +28,12 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: 
     const [isContactModalOpen, setContactModalOpen] = useState(false);
     const [isGroupModalOpen, setGroupModalOpen] = useState(false);
 
-    const [contactModalKey, setContactModalKey] = useState(0);
+    // State untuk Modal Konfirmasi Hapus
+    const [isDeleteAlertOpen, setDeleteAlertOpen] = useState(false);
+    const [deleteId, setDeleteId] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
+    const [contactModalKey, setContactModalKey] = useState(0);
     const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
     const [contacts, setContacts] = useState<Contact[]>([]);
@@ -37,6 +43,7 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: 
         setIsLoading(true);
         try {
             const formData = new FormData();
+            // Sesuaikan parameter action find anda
             const result = await findAllContactAction({ status: "idle", message: "" }, formData);
 
             if (result.status === "success" && Array.isArray(result.data)) {
@@ -58,7 +65,7 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: 
         }
     }, [isAddModalOpen, fetchContacts]);
 
-    // Handler Menutup Modal
+    // Handler Menutup Modal Create/Edit
     const handleCloseContactModal = useCallback(
         (open: boolean) => {
             setContactModalOpen(open);
@@ -84,21 +91,36 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: 
         setContactModalOpen(true);
     };
 
-    // Handler Delete Contact
-    const handleDeleteContact = async (id: string) => {
-        if (!confirm("Apakah Anda yakin ingin menghapus kontak ini?")) return;
+    // 1. Handler Klik Tombol Delete di Dropdown (Hanya membuka modal)
+    const handleOpenDeleteAlert = (id: string) => {
+        setDeleteId(id);
+        setDeleteAlertOpen(true);
+    };
 
-        // try {
-        //     const result = await deleteContactAction(id);
-        //     if (result.status === "success") {
-        //         toast.success("Berhasil", { description: result.message });
-        //         fetchContacts(); // Refresh list
-        //     } else {
-        //         toast.error("Gagal", { description: result.message });
-        //     }
-        // } catch (error) {
-        //     toast.error("Error", { description: "Gagal menghubungi server" });
-        // }
+    // 2. Handler Konfirmasi Delete (Eksekusi Action)
+    const handleConfirmDelete = async () => {
+        if (!deleteId) return;
+
+        setIsDeleting(true);
+        try {
+            const result = await deleteContactAction(deleteId);
+
+            if (result.status === "success") {
+                toast.success("Berhasil", { description: result.message });
+                setDeleteAlertOpen(false);
+                setDeleteId(null);
+                fetchContacts(); // Refresh list
+            } else {
+                toast.error("Gagal", { description: result.message });
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Error", {
+                description: "Gagal menghubungi server",
+            });
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     // Grouping Logic
@@ -257,7 +279,8 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: 
                                                                 Edit Contact
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem
-                                                                onClick={() => handleDeleteContact(contact.id)}
+                                                                // UBAH DISINI: Panggil handleOpenDeleteAlert
+                                                                onClick={() => handleOpenDeleteAlert(contact.id)}
                                                                 className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/10 cursor-pointer"
                                                             >
                                                                 <Trash className="w-4 h-4 mr-2" />
@@ -285,6 +308,14 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: 
             />
 
             <NewGroupModal isOpen={isGroupModalOpen} onClose={setGroupModalOpen} />
+
+            {/* Tambahkan Delete Alert Component */}
+            <DeleteContactAlert
+                isOpen={isDeleteAlertOpen}
+                onClose={setDeleteAlertOpen}
+                onConfirm={handleConfirmDelete}
+                isDeleting={isDeleting}
+            />
         </>
     );
 }
