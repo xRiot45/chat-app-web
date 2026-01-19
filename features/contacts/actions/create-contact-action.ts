@@ -1,5 +1,6 @@
 "use server";
 
+import { getAuthHeaders } from "@/helpers/get-auth-headers";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { createContactSchema } from "../schemas/create-contact-schema";
@@ -16,7 +17,7 @@ export async function createContactAction(prevState: ActionState, formData: Form
     if (!validatedFields.success) {
         return {
             status: "error",
-            message: "Validasi gagal, silakan periksa input Anda.",
+            message: "Validation failed, please check your input.",
             errors: validatedFields.error.flatten().fieldErrors,
         };
     }
@@ -30,24 +31,20 @@ export async function createContactAction(prevState: ActionState, formData: Form
         if (!token) {
             return {
                 status: "error",
-                message: "Anda tidak terautentikasi. Silakan login kembali.",
+                message: "You are not authenticated. Please log in again.",
             };
         }
 
+        const headers = await getAuthHeaders();
         const response = await fetch(`${API_BASE_URL}/api/contacts`, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`
-            },
+            headers: headers,
             body: JSON.stringify(payload),
         });
 
         const responseData = await response.json();
-
         if (!response.ok) {
-            const errorMessage = responseData.message || "Gagal menambahkan kontak.";
-
+            const errorMessage = responseData.message || "Failed to add contact.";
             return {
                 status: "error",
                 message: errorMessage,
@@ -55,16 +52,14 @@ export async function createContactAction(prevState: ActionState, formData: Form
         }
 
         revalidatePath("/");
-
         return {
             status: "success",
-            message: "Kontak berhasil ditambahkan!",
+            message: "Contact added successfully.",
         };
-    } catch (error) {
-        console.error("Create Contact Error:", error);
+    } catch {
         return {
             status: "error",
-            message: "Terjadi kesalahan sistem saat menghubungi server.",
+            message: "A system error occurred while contacting the server.",
         };
     }
 }
