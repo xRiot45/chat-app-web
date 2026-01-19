@@ -2,10 +2,10 @@
 
 import { API_BASE_URL } from "@/configs/api-base-url";
 import { getAuthHeaders } from "@/helpers/get-auth-headers";
+import { ActionState } from "@/types/action-state";
 import { ApiErrorResponse } from "@/types/api-response";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { ActionState } from "../types";
 
 export async function deleteContactAction(contactId: string): Promise<ActionState> {
     if (!contactId) {

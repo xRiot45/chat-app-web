@@ -2,12 +2,12 @@
 
 import { API_BASE_URL } from "@/configs/api-base-url";
 import { getAuthHeaders } from "@/helpers/get-auth-headers";
+import { ActionState } from "@/types/action-state";
 import { ApiResponse } from "@/types/api-response";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { Contact } from "../interfaces/contact";
 import { createContactSchema } from "../schemas/create-contact-schema";
-import { ActionState } from "../types";
 
 export async function createContactAction(prevState: ActionState, formData: FormData): Promise<ActionState> {
     const validatedFields = createContactSchema.safeParse({

@@ -3,10 +3,10 @@
 
 import { API_BASE_URL } from "@/configs/api-base-url";
 import { getAuthHeaders } from "@/helpers/get-auth-headers";
+import { ActionState } from "@/types/action-state";
 import { ApiResponse } from "@/types/api-response";
 import { cookies } from "next/headers";
 import { Contact } from "../interfaces/contact";
-import { ActionState } from "../types";
 
 export async function findAllContactAction(_prevState: ActionState, _formData: FormData): Promise<ActionState> {
     const cookieStore = await cookies();
