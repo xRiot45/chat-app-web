@@ -1,11 +1,13 @@
 "use server";
 
+import { API_BASE_URL } from "@/configs/api-base-url";
 import { getAuthHeaders } from "@/helpers/get-auth-headers";
+import { ApiResponse } from "@/types/api-response";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+import { Contact } from "../interfaces/contact";
 import { updateContactSchema } from "../schemas/update-contact-schema";
 import { ActionState } from "../types";
-
-const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
 
 export async function updateContactAction(prevState: ActionState, formData: FormData): Promise<ActionState> {
     const validatedFields = updateContactSchema.safeParse({
@@ -16,41 +18,49 @@ export async function updateContactAction(prevState: ActionState, formData: Form
     if (!validatedFields.success) {
         return {
             status: "error",
-            message: "Input tidak valid",
+            message: "Validation failed. Please check your input.",
             errors: validatedFields.error.flatten().fieldErrors,
         };
     }
 
-    const { id, alias } = validatedFields.data;
+    const cookieStore = await cookies();
+    const token = cookieStore.get("accessToken")?.value;
+
+    if (!token) {
+        return {
+            status: "error",
+            message: "Unauthorized. Please log in again.",
+        };
+    }
 
     try {
+        const { id, alias } = validatedFields.data;
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/api/contacts/${id}`, {
+
+        const response = await fetch(`${API_BASE_URL}/api/contacts/${id}`, {
             method: "PUT",
             headers: headers,
             body: JSON.stringify({ alias }),
         });
 
-        const responseJson = await response.json();
-
+        const responseData = (await response.json()) as ApiResponse<Contact>;
         if (!response.ok) {
             return {
                 status: "error",
-                message: responseJson.message || "Gagal memperbarui kontak di server.",
+                message: responseData.message || "Failed to update contact on server.",
             };
         }
 
         revalidatePath("/");
-
         return {
             status: "success",
-            message: "Nama kontak berhasil diperbarui.",
+            message: "Contact name updated successfully.",
         };
     } catch (error) {
-        console.error("Update Contact Error:", error);
+        console.error("[UpdateContactAction] System Error:", error);
         return {
             status: "error",
-            message: "Terjadi kesalahan jaringan atau server.",
+            message: "A system error occurred. Please try again later.",
         };
     }
 }
