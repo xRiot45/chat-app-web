@@ -4,3 +4,8 @@ export type ActionState<TData = unknown, TErrors = Record<string, string[] | und
     data?: TData;
     errors?: TErrors;
 };
+
+export const initialActionState: ActionState = {
+    status: "idle",
+    message: "",
+};

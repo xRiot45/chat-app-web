@@ -9,6 +9,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { initialActionState } from "@/types/action-state";
 import { ArrowLeft, Loader2, MoreVertical, Pencil, RefreshCw, Trash, UserPlus, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -25,27 +26,27 @@ interface ContactListsViewProps {
 }
 
 export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: ContactListsViewProps) {
-    const [isContactModalOpen, setContactModalOpen] = useState(false);
-    const [isGroupModalOpen, setGroupModalOpen] = useState(false);
+    const [isContactModalOpen, setContactModalOpen] = useState<boolean>(false);
+    const [isGroupModalOpen, setGroupModalOpen] = useState<boolean>(false);
 
-    // State untuk Modal Konfirmasi Hapus
-    const [isDeleteAlertOpen, setDeleteAlertOpen] = useState(false);
+    const [isDeleteAlertOpen, setDeleteAlertOpen] = useState<boolean>(false);
     const [deleteId, setDeleteId] = useState<string | null>(null);
-    const [isDeleting, setIsDeleting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
-    const [contactModalKey, setContactModalKey] = useState(0);
+    const [contactModalKey, setContactModalKey] = useState<number>(0);
     const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
     const [contacts, setContacts] = useState<Contact[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+
+    const [searchQuery, setSearchQuery] = useState<string>("");
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>("");
 
     const fetchContacts = useCallback(async () => {
         setIsLoading(true);
         try {
             const formData = new FormData();
-            // Sesuaikan parameter action find anda
-            const result = await findAllContactAction({ status: "idle", message: "" }, formData);
-
+            const result = await findAllContactAction(initialActionState, formData);
             if (result.status === "success" && Array.isArray(result.data)) {
                 setContacts(result.data as Contact[]);
             } else {
@@ -59,13 +60,6 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: 
         }
     }, []);
 
-    useEffect(() => {
-        if (isAddModalOpen) {
-            fetchContacts();
-        }
-    }, [isAddModalOpen, fetchContacts]);
-
-    // Handler Menutup Modal Create/Edit
     const handleCloseContactModal = useCallback(
         (open: boolean) => {
             setContactModalOpen(open);
@@ -77,27 +71,23 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: 
         [fetchContacts],
     );
 
-    // Handler Buka Modal "New Contact"
     const handleOpenNewContactModal = () => {
         setSelectedContact(null);
         setContactModalKey((prev) => prev + 1);
         setContactModalOpen(true);
     };
 
-    // Handler Buka Modal "Edit Contact"
     const handleEditContact = (contact: Contact) => {
         setSelectedContact(contact);
         setContactModalKey((prev) => prev + 1);
         setContactModalOpen(true);
     };
 
-    // 1. Handler Klik Tombol Delete di Dropdown (Hanya membuka modal)
     const handleOpenDeleteAlert = (id: string) => {
         setDeleteId(id);
         setDeleteAlertOpen(true);
     };
 
-    // 2. Handler Konfirmasi Delete (Eksekusi Action)
     const handleConfirmDelete = async () => {
         if (!deleteId) return;
 
@@ -106,12 +96,16 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: 
             const result = await deleteContactAction(deleteId);
 
             if (result.status === "success") {
-                toast.success("Berhasil", { description: result.message });
+                toast.success("Successfully", {
+                    description: result.message,
+                });
                 setDeleteAlertOpen(false);
                 setDeleteId(null);
-                fetchContacts(); // Refresh list
+                fetchContacts();
             } else {
-                toast.error("Gagal", { description: result.message });
+                toast.error("Gagal", {
+                    description: result.message,
+                });
             }
         } catch (error) {
             console.error(error);
@@ -123,12 +117,24 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: 
         }
     };
 
-    // Grouping Logic
+    const filteredContacts = useMemo(() => {
+        if (!debouncedSearchQuery) return contacts;
+
+        const lowerQuery = debouncedSearchQuery.toLowerCase();
+        return contacts.filter((c) => {
+            if (c.alias?.toLowerCase().includes(lowerQuery)) return true;
+            if (c.contactUser.fullName?.toLowerCase().includes(lowerQuery)) return true;
+            if (c.contactUser.username?.toLowerCase().includes(lowerQuery)) return true;
+
+            return false;
+        });
+    }, [contacts, debouncedSearchQuery]);
+
     const groupedContacts = useMemo(() => {
         const groups: Record<string, Contact[]> = {};
         const getDisplayName = (c: Contact) => c.alias || c.contactUser.fullName || c.contactUser.username;
 
-        const sorted = [...contacts].sort((a, b) => {
+        const sorted = [...filteredContacts].sort((a, b) => {
             return getDisplayName(a).localeCompare(getDisplayName(b));
         });
 
@@ -141,9 +147,25 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: 
         });
 
         return groups;
-    }, [contacts]);
+    }, [filteredContacts]);
 
     const sortedLetters = Object.keys(groupedContacts).sort();
+
+    useEffect(() => {
+        if (isAddModalOpen) {
+            fetchContacts();
+        }
+    }, [isAddModalOpen, fetchContacts]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchQuery(searchQuery);
+        }, 500);
+
+        return () => {
+            clearTimeout(timer);
+        };
+    }, [searchQuery]);
 
     return (
         <>
@@ -167,7 +189,7 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: 
                         <button
                             onClick={fetchContacts}
                             disabled={isLoading}
-                            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
                         >
                             <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
                         </button>
@@ -177,7 +199,7 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar px-2">
                     <div className="pt-4">
-                        <SearchInput />
+                        <SearchInput value={searchQuery} onChange={setSearchQuery} placeholder="Search contact" />
                     </div>
 
                     {/* Actions Buttons */}
