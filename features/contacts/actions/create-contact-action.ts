@@ -1,12 +1,13 @@
 "use server";
 
 import { getAuthHeaders } from "@/helpers/get-auth-headers";
+import { ApiResponse } from "@/types/api-response";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { createContactSchema } from "../schemas/create-contact-schema";
 import { ActionState } from "../types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000";
 
 export async function createContactAction(prevState: ActionState, formData: FormData): Promise<ActionState> {
     const validatedFields = createContactSchema.safeParse({
@@ -17,49 +18,49 @@ export async function createContactAction(prevState: ActionState, formData: Form
     if (!validatedFields.success) {
         return {
             status: "error",
-            message: "Validation failed, please check your input.",
+            message: "Validation failed. Please check your input fields.",
             errors: validatedFields.error.flatten().fieldErrors,
         };
     }
 
-    const payload = validatedFields.data;
+    const cookieStore = await cookies();
+    const token = cookieStore.get("accessToken")?.value;
+
+    if (!token) {
+        return {
+            status: "error",
+            message: "Authentication failed. Please log in again.",
+        };
+    }
 
     try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get("accessToken")?.value;
+        const payload = validatedFields.data;
+        const authHeaders = await getAuthHeaders();
 
-        if (!token) {
-            return {
-                status: "error",
-                message: "You are not authenticated. Please log in again.",
-            };
-        }
-
-        const headers = await getAuthHeaders();
         const response = await fetch(`${API_BASE_URL}/api/contacts`, {
             method: "POST",
-            headers: headers,
+            headers: authHeaders,
             body: JSON.stringify(payload),
         });
 
-        const responseData = await response.json();
+        const responseData = (await response.json()) as ApiResponse;
         if (!response.ok) {
-            const errorMessage = responseData.message || "Failed to add contact.";
             return {
                 status: "error",
-                message: errorMessage,
+                message: responseData.message || "Server refused the request.",
             };
         }
 
         revalidatePath("/");
         return {
             status: "success",
-            message: "Contact added successfully.",
+            message: "Contact has been added successfully.",
         };
-    } catch {
+    } catch (error) {
+        console.error("[CreateContactAction] Error:", error);
         return {
             status: "error",
-            message: "A system error occurred while contacting the server.",
+            message: "A system error occurred. Please try again later.",
         };
     }
 }
