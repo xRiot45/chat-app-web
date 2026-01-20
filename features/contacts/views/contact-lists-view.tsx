@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { initialActionState } from "@/types/action-state";
-import { ArrowLeft, Loader2, MoreVertical, Pencil, RefreshCw, Trash, UserPlus, Users } from "lucide-react";
+import { ArrowLeft, Loader2, MoreVertical, Pencil, RefreshCw, Send, Trash, UserPlus, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { deleteContactAction } from "../actions/delete-contact-action";
@@ -23,9 +23,10 @@ import { Contact } from "../interfaces/contact";
 interface ContactListsViewProps {
     isAddModalOpen: boolean;
     setIsAddModalOpen: (open: boolean) => void;
+    onStartChat: (contact: Contact) => void;
 }
 
-export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: ContactListsViewProps) {
+export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen, onStartChat }: ContactListsViewProps) {
     const [isContactModalOpen, setContactModalOpen] = useState<boolean>(false);
     const [isGroupModalOpen, setGroupModalOpen] = useState<boolean>(false);
 
@@ -291,19 +292,29 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: 
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent
                                                             align="end"
-                                                            className="w-40 bg-white dark:bg-[#181a20] border-slate-200 dark:border-white/10"
+                                                            className="w-62 bg-white dark:bg-[#181a20] border-slate-200 dark:border-white/10"
                                                         >
                                                             <DropdownMenuItem
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    onStartChat(contact);
+                                                                    setIsAddModalOpen(false);
+                                                                }}
+                                                                className="cursor-pointer focus:bg-slate-100 dark:focus:bg-white/5 p-4"
+                                                            >
+                                                                <Send className="w-4 h-4 mr-2" />
+                                                                Start Message
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
                                                                 onClick={() => handleEditContact(contact)}
-                                                                className="cursor-pointer focus:bg-slate-100 dark:focus:bg-white/5"
+                                                                className="cursor-pointer focus:bg-slate-100 dark:focus:bg-white/5 p-4"
                                                             >
                                                                 <Pencil className="w-4 h-4 mr-2" />
                                                                 Edit Contact
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem
-                                                                // UBAH DISINI: Panggil handleOpenDeleteAlert
                                                                 onClick={() => handleOpenDeleteAlert(contact.id)}
-                                                                className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/10 cursor-pointer"
+                                                                className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/10 cursor-pointer p-4"
                                                             >
                                                                 <Trash className="w-4 h-4 mr-2" />
                                                                 Delete Contact
@@ -331,7 +342,6 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen }: 
 
             <NewGroupModal isOpen={isGroupModalOpen} onClose={setGroupModalOpen} />
 
-            {/* Tambahkan Delete Alert Component */}
             <DeleteContactAlert
                 isOpen={isDeleteAlertOpen}
                 onClose={setDeleteAlertOpen}

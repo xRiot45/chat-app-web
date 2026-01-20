@@ -1,4 +1,3 @@
-import QueryProvider from "@/providers/query-provider";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import { Toaster } from "sonner";
@@ -29,10 +28,8 @@ export default function RootLayout({
     return (
         <html lang="en" className={inter.variable}>
             <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-                <QueryProvider>
-                    {children}
-                    <Toaster duration={3000} />
-                </QueryProvider>
+                {children}
+                <Toaster duration={3000} />
             </body>
         </html>
     );
