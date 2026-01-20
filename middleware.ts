@@ -3,6 +3,13 @@ import { NextResponse } from "next/server";
 
 export function middleware(request: NextRequest) {
     const { pathname, searchParams } = request.nextUrl;
+    const accessToken = request.cookies.get("accessToken");
+
+    if (pathname === "/") {
+        if (!accessToken) {
+            return NextResponse.redirect(new URL("/auth/login", request.url));
+        }
+    }
 
     const isVerifyPage = pathname === "/auth/verify-email";
     const isResendPage = pathname === "/auth/resend-verification";
@@ -11,11 +18,6 @@ export function middleware(request: NextRequest) {
         const justRegistered = request.cookies.get("just_registered");
         const status = searchParams.get("status");
 
-        /**
-         * Izinkan akses jika:
-         * 1. Ada cookie 'just_registered' (Baru saja registrasi)
-         * 2. ATAU ada param 'status' (Redirect hasil verifikasi dari backend)
-         */
         if (!justRegistered && !status) {
             return NextResponse.redirect(new URL("/auth/login", request.url));
         }
@@ -25,5 +27,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ["/auth/verify-email", "/auth/login", "/auth/register", "/auth/resend-verification"],
+    matcher: ["/", "/auth/verify-email", "/auth/login", "/auth/register", "/auth/resend-verification"],
 };
