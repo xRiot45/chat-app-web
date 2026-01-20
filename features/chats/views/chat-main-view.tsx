@@ -57,6 +57,8 @@ export default function ChatMainView({
                         }}
                     />
 
+                    {console.log("Jumlah pesan yang diterima List:", messages.length)}
+
                     <ChatMessageList
                         messages={messages}
                         currentUserId={currentUserId}

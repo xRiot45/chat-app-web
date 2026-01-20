@@ -14,6 +14,7 @@ import { ActiveChatSession, MobileViewType } from "@/features/chats/interfaces";
 import ChatMainView from "@/features/chats/views/chat-main-view";
 import ContactListsView from "@/features/contacts/views/contact-lists-view";
 import { cn } from "@/lib/utils";
+import { initialActionState } from "@/types/action-state";
 import {
     ArrowLeft,
     Bell,
@@ -32,7 +33,8 @@ import {
     X,
 } from "lucide-react";
 import Image from "next/image";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useActionState, useEffect, useRef, useState } from "react";
+import { getMessagesAction } from "../actions/get-message-action";
 
 interface ChatClientPageProps {
     token: string;
@@ -58,6 +60,8 @@ export default function ChatClientPage({ token, currentUserId }: ChatClientPageP
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
+    const [state, formAction] = useActionState(getMessagesAction, initialActionState);
+
     // Socket Integration
     const { messages, sendMessage, setMessages } = useChatSocket({
         token,
@@ -65,27 +69,31 @@ export default function ChatClientPage({ token, currentUserId }: ChatClientPageP
         activeRecipientId: selectedChat?.recipientId,
     });
 
-    // --- Effect untuk Load History Chat ---
     useEffect(() => {
-        const fetchHistory = async () => {
-            if (selectedChat?.recipientId) {
-                try {
-                    // Gunakan fetch atau server action yang memanggil:
-                    // getMessages(currentUserId, selectedChat.recipientId)
-                    // const history = await getMessagesAction(selectedChat.recipientId);
-                    // setMessages(history);
+        if (state.status === "success" && state.data) {
+            setMessages(Array.isArray(state.data) ? state.data : []);
+        }
+    }, [setMessages, state]);
 
-                    console.log("Fetching history for:", selectedChat.recipientId);
-                    // Sementara jika belum ada API, kita kosongkan agar tidak tercampur chat sebelumnya
-                    setMessages([]);
-                } catch (error) {
-                    console.error("Gagal memuat history chat:", error);
-                }
-            }
-        };
+    useEffect(() => {
+        if (selectedChat?.recipientId) {
+            setMessages([]);
 
-        fetchHistory();
+            const formData = new FormData();
+            formData.append("recipientId", selectedChat.recipientId);
+            formData.append("limit", "20");
+            formData.append("offset", "0");
+
+            formAction(formData);
+        }
     }, [selectedChat?.recipientId, setMessages]);
+
+    // --- 3. Scroll to Bottom saat ada pesan baru ---
+    useEffect(() => {
+        if (messages.length > 0) {
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
+    }, [messages]);
 
     // Toggle Dark Mode
     useEffect(() => {
@@ -104,15 +112,19 @@ export default function ChatClientPage({ token, currentUserId }: ChatClientPageP
     };
 
     const handleChatSelect = (chat: any) => {
+        const targetRecipientId = chat.userId || chat.participants?.[0]?.id || chat.id;
+        console.log(targetRecipientId);
+
         const mappedChat: ActiveChatSession = {
             conversationId: chat.id,
-            recipientId: chat.userId || chat.id,
+            recipientId: targetRecipientId,
             name: chat.name,
             avatar: chat.avatar,
             type: chat.type || "private",
             status: chat.status || "OFFLINE",
             members: chat.members,
         };
+
         setSelectedChat(mappedChat);
         setMobileView("chat");
     };
