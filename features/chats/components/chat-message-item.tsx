@@ -1,3 +1,5 @@
+"use client";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -15,7 +17,6 @@ export default function ChatMessageItem({ message, isMe }: ChatMessageItemProps)
     return (
         <div className={cn("flex w-full group", isMe ? "justify-end" : "justify-start")}>
             <div className={cn("flex max-w-[85%] lg:max-w-[65%] gap-3", isMe ? "flex-row-reverse" : "flex-row")}>
-                {/* Avatar Lawan Bicara */}
                 {!isMe && (
                     <div className="w-8 shrink-0 flex flex-col justify-end">
                         <Avatar className="w-8 h-8">
@@ -34,7 +35,7 @@ export default function ChatMessageItem({ message, isMe }: ChatMessageItemProps)
 
                     <div
                         className={cn(
-                            "relative px-4 py-3 shadow-sm text-[15px] leading-relaxed transition-all duration-200 wrap-break-word",
+                            "relative  px-4 py-3 shadow-sm text-[15px] leading-relaxed transition-all duration-200 wrap-break-word",
                             isMe
                                 ? "bg-linear-to-br from-indigo-600 to-violet-600 text-white rounded-2xl rounded-tr-sm"
                                 : "bg-white dark:bg-[#1c1f26] border border-slate-200 dark:border-white/5 text-slate-800 dark:text-slate-200 rounded-2xl rounded-tl-sm hover:border-slate-300 dark:hover:border-white/20",
@@ -46,20 +47,16 @@ export default function ChatMessageItem({ message, isMe }: ChatMessageItemProps)
                         {/* Timestamp & Status */}
                         <div
                             className={cn(
-                                "flex items-center justify-end gap-1 mt-1 text-[10px]",
+                                "flex items-center justify-end gap-1 mt-2 text-[10px]",
                                 isMe ? "text-indigo-200" : "text-slate-400",
                             )}
                         >
                             <span>{formattedTime}</span>
-                            {isMe && (
-                                // Logika Read receipt bisa dikembangkan nanti berdasarkan field message.readAt
-                                <Check className="w-3.5 h-3.5" />
-                            )}
+                            {isMe && <Check className="w-3.5 h-3.5" />}
                         </div>
                     </div>
                 </div>
 
-                {/* Action buttons (Hover) */}
                 <div
                     className={cn(
                         "opacity-0 group-hover:opacity-100 transition-opacity flex items-center self-center",

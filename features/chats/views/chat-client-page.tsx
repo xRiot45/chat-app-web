@@ -1,5 +1,19 @@
 "use client";
 
+import AllChat from "@/components/all-chat";
+import ButtonGrouping from "@/components/button-grouping";
+import PinnedChat from "@/components/pinned-chat";
+import SearchInput from "@/components/search-input";
+import Stories from "@/components/stories";
+import { Avatar } from "@/components/ui/avatar";
+import User from "@/components/user";
+import { SHARED_MEDIA } from "@/constants/shared-media";
+import { STORIES } from "@/constants/stories";
+import { useChatSocket } from "@/features/chats/hooks/use-chat-socket";
+import { ActiveChatSession, MobileViewType } from "@/features/chats/interfaces";
+import ChatMainView from "@/features/chats/views/chat-main-view";
+import ContactListsView from "@/features/contacts/views/contact-lists-view";
+import { cn } from "@/lib/utils";
 import {
     ArrowLeft,
     Bell,
@@ -20,28 +34,6 @@ import {
 import Image from "next/image";
 import React, { useEffect, useRef, useState } from "react";
 
-import { Avatar } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
-
-// --- Components Imports ---
-import AllChat from "@/components/all-chat";
-import ButtonGrouping from "@/components/button-grouping";
-import PinnedChat from "@/components/pinned-chat";
-import SearchInput from "@/components/search-input";
-import Stories from "@/components/stories";
-import User from "@/components/user";
-import ChatMainView from "@/features/chats/views/chat-main-view";
-import ContactListsView from "@/features/contacts/views/contact-lists-view";
-
-// --- Constants ---
-import { SHARED_MEDIA } from "@/constants/shared-media";
-import { STORIES } from "@/constants/stories";
-
-// --- Features Imports ---
-import { useChatSocket } from "@/features/chats/hooks/use-chat-socket";
-import { ActiveChatSession, MobileViewType } from "@/features/chats/interfaces";
-
-// --- Props Definition ---
 interface ChatClientPageProps {
     token: string;
     currentUserId: string;
@@ -66,15 +58,14 @@ export default function ChatClientPage({ token, currentUserId }: ChatClientPageP
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // [BARU] --- INTEGRASI SOCKET ---
-    // State 'messages' sekarang dikendalikan oleh Hook, bukan useState lokal lagi
-    const { messages, sendMessage, isConnected, setMessages } = useChatSocket({
+    // Socket Integration
+    const { messages, sendMessage, setMessages } = useChatSocket({
         token,
         currentUserId,
-        activeRecipientId: selectedChat?.recipientId, // Penting agar pesan masuk difilter sesuai chat aktif
+        activeRecipientId: selectedChat?.recipientId,
     });
 
-    // --- BARU: Effect untuk Load History Chat ---
+    // --- Effect untuk Load History Chat ---
     useEffect(() => {
         const fetchHistory = async () => {
             if (selectedChat?.recipientId) {
@@ -109,14 +100,13 @@ export default function ChatClientPage({ token, currentUserId }: ChatClientPageP
         // [BARU] Panggil fungsi sendMessage dari Hook
         // Hook akan menangani Optimistic UI (tambah langsung ke state) & Emit ke Socket
         sendMessage(inputText, selectedChat.recipientId);
-
         setInputText("");
     };
 
     const handleChatSelect = (chat: any) => {
         const mappedChat: ActiveChatSession = {
             conversationId: chat.id,
-            recipientId: chat.userId || chat.id, // Pastikan ID lawan bicara terambil
+            recipientId: chat.userId || chat.id,
             name: chat.name,
             avatar: chat.avatar,
             type: chat.type || "private",
@@ -130,7 +120,7 @@ export default function ChatClientPage({ token, currentUserId }: ChatClientPageP
     const handleStartMessage = (contact: any) => {
         const newChatData: ActiveChatSession = {
             conversationId: undefined,
-            recipientId: contact.contactUser.id, // ID untuk socket destination
+            recipientId: contact.contactUser.id,
             name: contact.alias || contact.contactUser.fullName || contact.contactUser.username,
             avatar: contact.contactUser.avatarUrl || "",
             type: "private",
@@ -140,7 +130,6 @@ export default function ChatClientPage({ token, currentUserId }: ChatClientPageP
 
         setSelectedChat(newChatData);
         setMobileView("chat");
-        // Pesan akan otomatis kosong/load dari hook berdasarkan recipientId
     };
 
     // -- STORY HANDLERS --
@@ -249,7 +238,7 @@ export default function ChatClientPage({ token, currentUserId }: ChatClientPageP
                             <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
                                 <Avatar className="w-16 h-16">
                                     {/* Fallback image */}
-                                    <img src="https://i.pravatar.cc/150?u=me" alt="me" />
+                                    <Image width={500} height={500} src="https://i.pravatar.cc/150?u=me" alt="me" />
                                 </Avatar>
                                 <div>
                                     <h3 className="font-bold text-lg text-slate-800 dark:text-white">Gemini Dev</h3>
@@ -306,19 +295,19 @@ export default function ChatClientPage({ token, currentUserId }: ChatClientPageP
                 </div>
             )}
 
-            {/* === CENTER MAIN CHAT (REFACTORED) === */}
+            {/* === CENTER MAIN CHAT === */}
             <ChatMainView
                 currentUserId={currentUserId}
                 selectedChat={selectedChat}
                 mobileView={mobileView}
                 showRightPanel={showRightPanel}
-                messages={messages} // Menggunakan messages dari Hook Socket
+                messages={messages}
                 inputText={inputText}
                 setMobileView={setMobileView}
                 setSelectedChat={setSelectedChat}
                 setShowRightPanel={setShowRightPanel}
                 setInputText={setInputText}
-                onSendMessage={handleSendMessage} // Menggunakan handler baru
+                onSendMessage={handleSendMessage}
                 messagesEndRef={messagesEndRef}
             />
 
@@ -352,7 +341,13 @@ export default function ChatClientPage({ token, currentUserId }: ChatClientPageP
                         <div className="flex flex-col items-center text-center">
                             <div className="relative">
                                 <Avatar className="w-24 h-24 mb-4 ring-4 ring-slate-100 dark:ring-white/5 shadow-xl">
-                                    <img src={selectedChat.avatar} alt={selectedChat.name} />
+                                    <Image
+                                        className="rounded-full"
+                                        width={96}
+                                        height={96}
+                                        src={selectedChat.avatar}
+                                        alt={selectedChat.name}
+                                    />
                                 </Avatar>
                                 {selectedChat.status === "ONLINE" && (
                                     <span className="absolute bottom-5 right-1 w-4 h-4 bg-green-500 border-2 border-white dark:border-[#0f1115] rounded-full"></span>

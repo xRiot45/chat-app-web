@@ -1,3 +1,5 @@
+"use client";
+
 import { ImageIcon, Mic, Plus, Send, Smile } from "lucide-react";
 import React from "react";
 

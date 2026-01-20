@@ -1,3 +1,5 @@
+"use client";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, MoreHorizontal, Phone, Video } from "lucide-react";
@@ -10,7 +12,12 @@ interface ChatHeaderProps {
     onBackToMobileList: () => void;
 }
 
-export function ChatHeader({ selectedChat, showRightPanel, onToggleRightPanel, onBackToMobileList }: ChatHeaderProps) {
+export default function ChatHeader({
+    selectedChat,
+    showRightPanel,
+    onToggleRightPanel,
+    onBackToMobileList,
+}: ChatHeaderProps) {
     return (
         <header className="h-19 px-6 flex items-center justify-between border-b border-slate-200/50 dark:border-white/5 bg-white/40 dark:bg-[#0f1115]/60 backdrop-blur-md sticky top-0 z-30">
             <div className="flex items-center gap-4">

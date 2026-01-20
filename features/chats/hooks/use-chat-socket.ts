@@ -7,7 +7,7 @@ import { CreateMessage, Message } from "../interfaces";
 interface UseChatSocketProps {
     token: string;
     currentUserId: string;
-    activeRecipientId?: string; // ID lawan bicara yang sedang dibuka chatnya
+    activeRecipientId?: string;
 }
 
 export function useChatSocket({ token, currentUserId, activeRecipientId }: UseChatSocketProps) {
@@ -27,32 +27,23 @@ export function useChatSocket({ token, currentUserId, activeRecipientId }: UseCh
 
         function onConnect() {
             setIsConnected(true);
-            console.log("✅ Socket connected:", socket.id);
+            // console.log("Socket connected:", socket.id);
         }
 
-        function onDisconnect(reason: string) {
+        function onDisconnect() {
             setIsConnected(false);
-            console.log("❌ Socket disconnected:", reason);
+            // console.log("Socket disconnected:", reason);
         }
 
-        function onConnectError(err: Error) {
-            console.error("⚠️ Connection Error:", err.message);
+        function onConnectError() {
+            // console.error("Connection Error:", err.message);
         }
 
-        /**
-         * Handler untuk Pesan Masuk
-         * Backend: this.server.to(recipientRoom).emit('message', response)
-         */
+        // Listener for incoming messages
         function onMessageReceived(newMessage: Message) {
-            console.log("📩 New message received from socket:", newMessage);
-
             setMessages((prev) => {
-                // 1. Hindari duplikasi pesan (terutama jika kita pengirimnya)
                 if (prev.some((m) => m.id === newMessage.id)) return prev;
 
-                // 2. Logic Filtering:
-                // Tampilkan pesan hanya jika pesan itu berasal dari user yang chat-nya sedang kita buka
-                // ATAU jika kita sendiri yang mengirim pesan tersebut (untuk sync antar tab/device)
                 const isFromActiveChat = newMessage.senderId === activeRecipientId;
                 const isFromMe = newMessage.senderId === currentUserId;
 
@@ -60,27 +51,24 @@ export function useChatSocket({ token, currentUserId, activeRecipientId }: UseCh
                     return [...prev, newMessage];
                 }
 
-                // Jika pesan untuk chat lain, abaikan (atau kamu bisa buat state 'unread' di sini)
                 return prev;
             });
         }
 
-        // Mendaftarkan listener
         socket.on("connect", onConnect);
         socket.on("disconnect", onDisconnect);
         socket.on("connect_error", onConnectError);
         socket.on("message", onMessageReceived);
 
         return () => {
-            // Unregister semua listener saat component unmount atau token berubah
             socket.off("connect", onConnect);
             socket.off("disconnect", onDisconnect);
             socket.off("connect_error", onConnectError);
             socket.off("message", onMessageReceived);
         };
-    }, [token, activeRecipientId]); // Re-run jika activeRecipientId berubah agar filter sinkron
+    }, [token, activeRecipientId]);
 
-    // Fungsi Send Message
+    // Function to send a message
     const sendMessage = useCallback(
         async (content: string, recipientId: string) => {
             const socket = socketRef.current;
@@ -89,13 +77,11 @@ export function useChatSocket({ token, currentUserId, activeRecipientId }: UseCh
                 return;
             }
 
-            // Payload sesuai DTO Backend (CreateMessageDto)
             const payload: CreateMessage = {
                 recipientId,
                 content,
             };
 
-            // --- OPTIMISTIC UI UPDATE ---
             const tempId = `temp-${Date.now()}`;
             const optimisticMessage: Message = {
                 id: tempId,
@@ -112,31 +98,27 @@ export function useChatSocket({ token, currentUserId, activeRecipientId }: UseCh
                 isPending: true,
             };
 
-            // Masukkan pesan ke UI terlebih dahulu agar terasa instant
             setMessages((prev) => [...prev, optimisticMessage]);
 
-            // Emit event 'sendMessage' ke Backend
-            // Menggunakan acknowledgement (callback) untuk konfirmasi dari server
+            // Emit event 'sendMessage' to Backend
             socket.emit("sendMessage", payload, (response: Message) => {
                 if (response && response.id) {
-                    // Jika sukses, ganti pesan temp dengan data asli dari database
                     setMessages((prev) => prev.map((msg) => (msg.id === tempId ? response : msg)));
                 } else {
-                    // Jika gagal (misal validasi backend gagal)
                     setMessages((prev) =>
                         prev.map((msg) => (msg.id === tempId ? { ...msg, isError: true, isPending: false } : msg)),
                     );
                 }
             });
         },
-        [currentUserId], // Dependency cukup currentUserId
+        [currentUserId],
     );
 
     return {
         socket: socketRef.current,
         isConnected,
         messages,
-        setMessages, // Diexport agar bisa reset/load history dari page.tsx
+        setMessages,
         sendMessage,
     };
 }

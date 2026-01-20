@@ -1,33 +1,26 @@
-// src/features/views/chat-main-view/index.tsx
+"use client";
 
 import { cn } from "@/lib/utils";
 import React from "react";
-import { ChatHeader } from "../components/chat-header";
+import ChatHeader from "../components/chat-header";
 import ChatInput from "../components/chat-input";
-import { ChatMessageList } from "../components/chat-message-list";
+import ChatMessageList from "../components/chat-message-list";
 import EmptyChatState from "../components/empty-chat-state";
 import { ActiveChatSession, Message, MobileViewType } from "../interfaces";
 
 interface ChatMainViewProps {
-    // --- Data ---
-    currentUserId: string; // [BARU] Wajib ada untuk logika isMe
+    currentUserId: string;
     selectedChat: ActiveChatSession | null;
     messages: Message[];
     inputText: string;
     mobileView: MobileViewType;
     showRightPanel: boolean;
-
-    // --- Handlers ---
     setMobileView: (view: MobileViewType) => void;
     setSelectedChat: (chat: ActiveChatSession | null) => void;
     setShowRightPanel: (show: boolean) => void;
     setInputText: (text: string) => void;
-
-    // onSendMessage sekarang mengirim recipientId dan content sesuai DTO backend
     onSendMessage: (e: React.FormEvent) => void;
-
-    // --- Refs ---
-    messagesEndRef: React.RefObject<HTMLDivElement>;
+    messagesEndRef: React.RefObject<HTMLDivElement | null>;
 }
 
 export default function ChatMainView({
@@ -67,7 +60,7 @@ export default function ChatMainView({
                     <ChatMessageList
                         messages={messages}
                         currentUserId={currentUserId}
-                        messagesEndRef={messagesEndRef}
+                        messagesEndRef={messagesEndRef as React.RefObject<HTMLDivElement>}
                     />
 
                     <ChatInput value={inputText} onChange={setInputText} onSubmit={onSendMessage} />

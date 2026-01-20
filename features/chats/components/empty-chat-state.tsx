@@ -1,3 +1,5 @@
+"use client";
+
 import { MessageCircle, Settings } from "lucide-react";
 
 export default function EmptyChatState() {

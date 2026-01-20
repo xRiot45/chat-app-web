@@ -1,13 +1,7 @@
 import ChatClientPage from "@/features/chats/views/chat-client-page";
+import { JwtPayload } from "@/interfaces/jwt-payload";
 import { jwtDecode } from "jwt-decode";
 import { cookies } from "next/headers";
-
-interface JwtPayload {
-    sub: string;
-    username: string;
-    iat: number;
-    exp: number;
-}
 
 export default async function Page() {
     const cookieStore = await cookies();
