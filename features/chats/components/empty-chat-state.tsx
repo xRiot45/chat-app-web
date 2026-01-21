@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageCircle, Settings } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 
 export default function EmptyChatState() {
     return (
@@ -17,9 +17,6 @@ export default function EmptyChatState() {
                 <br />
                 Mulai percakapan dengan memilih kontak di sebelah kiri.
             </p>
-            <button className="px-6 py-3 rounded-xl bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-700 dark:text-white font-medium transition-all flex items-center gap-2">
-                <Settings className="w-4 h-4" /> Personalize Theme
-            </button>
         </div>
     );
 }
