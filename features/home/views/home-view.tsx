@@ -14,25 +14,10 @@ import { useChatSocket } from "@/features/chats/hooks/use-chat-socket";
 import { ActiveChatSession, MobileViewType } from "@/features/chats/interfaces";
 import ChatMainView from "@/features/chats/views/chat-main-view";
 import ContactListsView from "@/features/contacts/views/contact-lists-view";
+import SettingView from "@/features/settings/views/setting-view";
 import { cn } from "@/lib/utils";
 import { initialActionState } from "@/types/action-state";
-import {
-    ArrowLeft,
-    Bell,
-    ChevronLeft,
-    ChevronRight,
-    Download,
-    FileText,
-    Globe,
-    Heart,
-    LogOut,
-    MessageSquare,
-    Search,
-    Send,
-    Shield,
-    UserPlus,
-    X,
-} from "lucide-react";
+import { Bell, ChevronLeft, ChevronRight, Download, FileText, Heart, LogOut, Search, Send, X } from "lucide-react";
 import Image from "next/image";
 import React, { useActionState, useEffect, useRef, useState } from "react";
 
@@ -203,7 +188,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
                 <Stories openStory={openStory} />
 
                 {/* Search */}
-                <SearchInput placeholder="Search or start a new chat" value={inputText} onChange={setInputText} />
+                <SearchInput placeholder="Search or start a new chat" />
 
                 {/* Chat Lists */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar px-3 space-y-6 pt-2 pb-4">
@@ -223,89 +208,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
             </aside>
 
             {/* === SETTINGS SIDEBAR (Full Overlay) === */}
-            {isSettingsOpen && (
-                <div className="absolute inset-0 z-50 flex">
-                    {/* Backdrop */}
-                    <div
-                        className="flex-1 bg-black/20 backdrop-blur-sm animate-in fade-in"
-                        onClick={() => setIsSettingsOpen(false)}
-                    ></div>
-
-                    {/* Sidebar Panel */}
-                    <div className="w-125 h-full bg-white dark:bg-[#0f1115] border-r border-slate-200 dark:border-white/5 shadow-2xl flex flex-col absolute left-0 animate-in slide-in-from-left duration-300">
-                        {/* Header */}
-                        <div className="h-19 px-6 flex items-center justify-between border-b border-slate-200/50 dark:border-white/5">
-                            <h2 className="text-xl font-bold text-slate-800 dark:text-white">Settings</h2>
-                            <button
-                                onClick={() => setIsSettingsOpen(false)}
-                                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 text-slate-500 transition-colors"
-                            >
-                                <ArrowLeft className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
-                            {/* Profile Section */}
-                            <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
-                                <Avatar className="w-16 h-16">
-                                    {/* Fallback image */}
-                                    <Image width={500} height={500} src="https://i.pravatar.cc/150?u=me" alt="me" />
-                                </Avatar>
-                                <div>
-                                    <h3 className="font-bold text-lg text-slate-800 dark:text-white">Gemini Dev</h3>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400">+62 812 3456 7890</p>
-                                    <p className="text-xs text-indigo-500 mt-1 cursor-pointer hover:underline">
-                                        Edit Profile
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Settings Menu */}
-                            <div className="space-y-1">
-                                {[
-                                    { icon: UserPlus, label: "Account", sub: "Privacy, Security, Change Number" },
-                                    { icon: MessageSquare, label: "Chats", sub: "Theme, Wallpapers, Chat History" },
-                                    { icon: Bell, label: "Notifications", sub: "Message, Group & Call Tones" },
-                                    { icon: Globe, label: "App Language", sub: "English (device's language)" },
-                                    { icon: FileText, label: "Storage and Data", sub: "Network usage, auto-download" },
-                                ].map((item, i) => (
-                                    <button
-                                        key={i}
-                                        className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-left group"
-                                    >
-                                        <div className="p-2 rounded-lg bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 group-hover:text-indigo-500 group-hover:bg-indigo-500/10 transition-colors">
-                                            <item.icon className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <p className="font-semibold text-sm text-slate-700 dark:text-slate-200">
-                                                {item.label}
-                                            </p>
-                                            <p className="text-xs text-slate-400 dark:text-slate-500">{item.sub}</p>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Others */}
-                            <div className="space-y-1 pt-4 border-t border-slate-100 dark:border-white/5">
-                                <button className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-left group">
-                                    <div className="p-2 rounded-lg bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 group-hover:text-amber-500 group-hover:bg-amber-500/10 transition-colors">
-                                        <Shield className="w-5 h-5" />
-                                    </div>
-                                    <p className="font-semibold text-sm text-slate-700 dark:text-slate-200">Help</p>
-                                </button>
-                                <button className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-left group">
-                                    <div className="p-2 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 group-hover:bg-red-100 dark:group-hover:bg-red-900/30 transition-colors">
-                                        <LogOut className="w-5 h-5" />
-                                    </div>
-                                    <p className="font-semibold text-sm text-red-500">Log Out</p>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <SettingView isSettingsOpen={isSettingsOpen} setIsSettingsOpen={setIsSettingsOpen} />
 
             {/* === CENTER MAIN CHAT === */}
             <ChatMainView
