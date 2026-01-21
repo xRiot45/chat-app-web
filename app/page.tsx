@@ -1,4 +1,4 @@
-import ChatClientPage from "@/features/chats/views/chat-client-page";
+import HomeView from "@/features/home/views/home-view";
 import { JwtPayload } from "@/interfaces/jwt-payload";
 import { jwtDecode } from "jwt-decode";
 import { cookies } from "next/headers";
@@ -17,5 +17,5 @@ export default async function Page() {
         console.error("Gagal decode token:", error);
     }
 
-    return <ChatClientPage token={token} currentUserId={currentUserId} />;
+    return <HomeView token={token} currentUserId={currentUserId} />;
 }

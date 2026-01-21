@@ -9,6 +9,7 @@ import { Avatar } from "@/components/ui/avatar";
 import User from "@/components/user";
 import { SHARED_MEDIA } from "@/constants/shared-media";
 import { STORIES } from "@/constants/stories";
+import { getMessagesAction } from "@/features/chats/actions/get-message-action";
 import { useChatSocket } from "@/features/chats/hooks/use-chat-socket";
 import { ActiveChatSession, MobileViewType } from "@/features/chats/interfaces";
 import ChatMainView from "@/features/chats/views/chat-main-view";
@@ -34,14 +35,13 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import React, { useActionState, useEffect, useRef, useState } from "react";
-import { getMessagesAction } from "../actions/get-message-action";
 
 interface ChatClientPageProps {
     token: string;
     currentUserId: string;
 }
 
-export default function ChatClientPage({ token, currentUserId }: ChatClientPageProps) {
+export default function HomeView({ token, currentUserId }: ChatClientPageProps) {
     const [isDarkMode, setIsDarkMode] = useState(true);
 
     // --- State Type Updated to ActiveChatSession ---
