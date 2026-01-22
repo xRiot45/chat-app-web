@@ -13,11 +13,8 @@ interface UseChatSocketProps {
 export function useChatSocket({ token, currentUserId, activeRecipientId }: UseChatSocketProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [isConnected, setIsConnected] = useState(false);
-
-    // [UPDATE 1] Gunakan State agar Parent Component (HomeView) tahu kapan socket siap
     const [socket, setSocket] = useState<Socket | null>(null);
 
-    // Ref tetap digunakan untuk internal logic (sendMessage) agar tidak stale closure
     const socketRef = useRef<Socket | null>(null);
 
     useEffect(() => {
@@ -132,11 +129,23 @@ export function useChatSocket({ token, currentUserId, activeRecipientId }: UseCh
         [currentUserId],
     );
 
+    // Function to mark a message as read
+    const markMessageAsRead = useCallback((conversationId: string, recipientId: string) => {
+        const socketInstance = socketRef.current;
+        if (!socketInstance || !socketInstance.connected) return;
+
+        socketInstance.emit("markConversationAsRead", {
+            conversationId,
+            recipientId,
+        });
+    }, []);
+
     return {
-        socket, // [UPDATE 2] Return socket state object
+        socket,
         isConnected,
         messages,
         setMessages,
         sendMessage,
+        markMessageAsRead,
     };
 }

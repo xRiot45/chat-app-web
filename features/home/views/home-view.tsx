@@ -26,25 +26,19 @@ interface ChatClientPageProps {
 }
 
 export default function HomeView({ token, currentUserId }: ChatClientPageProps) {
-    const [isDarkMode, setIsDarkMode] = useState(true);
-
-    // --- State Management dengan Type Safety ---
+    const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
     const [conversations, setConversations] = useState<ChatConversation[]>([]);
     const [selectedChat, setSelectedChat] = useState<ActiveChatSession | null>(null);
     const [mobileView, setMobileView] = useState<MobileViewType>("list");
     const [showRightPanel, setShowRightPanel] = useState(true);
     const [inputText, setInputText] = useState("");
-
-    // -- MODALS / SIDEBAR STATE --
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [storyIndex, setStoryIndex] = useState<number | null>(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // --- Socket Integration ---
-    // Pastikan hook useChatSocket mengembalikan instance 'socket'
-    const { messages, sendMessage, setMessages, socket } = useChatSocket({
+    const { messages, sendMessage, setMessages, socket, markMessageAsRead } = useChatSocket({
         token,
         currentUserId,
         activeRecipientId: selectedChat?.recipientId,
@@ -73,80 +67,105 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
         if (!socket) return;
 
         const handleSidebarUpdate = (newMessage: any) => {
-            console.log("Socket Update Sidebar:", newMessage); // Debugging
-
             setConversations((prev) => {
                 const updatedList = [...prev];
-
-                // 1. Cari apakah percakapan ini sudah ada di list?
                 const existingIndex = updatedList.findIndex((c) => c.id === newMessage.conversationId);
 
                 if (existingIndex !== -1) {
-                    // KASUS A: Percakapan sudah ada
-                    // Ambil data chat lama
                     const chatToUpdate = { ...updatedList[existingIndex] };
 
-                    // Update lastMessage dengan pesan baru dari socket
                     chatToUpdate.lastMessage = {
                         id: newMessage.id,
                         content: newMessage.content,
                         createdAt: newMessage.createdAt,
                         senderId: newMessage.senderId,
-                        isRead: false, // Pesan baru pasti unread
+                        isRead: false,
                     };
 
-                    // Update Unread Count (Opsional)
-                    // Jika pengirim BUKAN saya, tambah unread count
                     if (newMessage.senderId !== currentUserId) {
                         chatToUpdate.unreadCount = (chatToUpdate.unreadCount || 0) + 1;
                     }
 
-                    // Pindahkan ke paling ATAS (Shift position)
                     updatedList.splice(existingIndex, 1);
                     updatedList.unshift(chatToUpdate);
-                } else {
-                    // KASUS B: Percakapan Baru (Belum ada di sidebar)
-                    // Solusi Cepat: Fetch ulang API agar data creator/recipient lengkap
-                    // Atau jika backend mengirim data lengkap di socket, bisa push manual.
-                    // getRecentMessagesQuery().then((data) => setConversations(data || []));
                 }
 
                 return updatedList;
             });
         };
 
-        // --- PENTING: Sesuaikan nama event dengan Backend NestJS Anda ---
-        // Biasanya backend meng-emit event 'message' atau 'receive_message'
-        socket.on("message", handleSidebarUpdate);
+        const handleMessageRead = (data: { conversationId: string; readBy: string; lastReadMessageId: string }) => {
+            setConversations((prev) => {
+                return prev.map((chat) => {
+                    if (chat.id === data.conversationId) {
+                        if (data.readBy !== currentUserId) {
+                            if (chat.lastMessage && chat.lastMessage.senderId === currentUserId) {
+                                return {
+                                    ...chat,
+                                    lastMessage: {
+                                        ...chat.lastMessage,
+                                        isRead: true, 
+                                    },
+                                };
+                            }
+                        }
 
-        // Jika Anda ingin sidebar update saat ANDA mengirim pesan juga:
-        // socket.on("message_sent", handleSidebarUpdate);
+                        if (data.readBy === currentUserId) {
+                            return { ...chat, unreadCount: 0 };
+                        }
+                    }
+                    return chat;
+                });
+            });
+
+            setMessages((prevMessages) => {
+                if (data.readBy !== currentUserId) {
+                    return prevMessages.map((msg) => ({
+                        ...msg,
+                        isRead: true,
+                    }));
+                }
+                return prevMessages;
+            });
+        };
+
+        socket.on("message", handleSidebarUpdate);
+        socket.on("messageRead", handleMessageRead);
 
         return () => {
             socket.off("message", handleSidebarUpdate);
-            // socket.off("message_sent", handleSidebarUpdate);
+            socket.off("messageRead", handleMessageRead);
         };
-    }, [socket, currentUserId]);
+    }, [socket, currentUserId, setMessages]);
 
     // --- 3. FETCH MESSAGES SAAT CHAT DIPILIH ---
     useEffect(() => {
         const loadMessages = async () => {
             if (!selectedChat?.recipientId) return;
 
-            // Reset pesan agar tidak flashing
             setMessages([]);
 
             try {
-                // Fetch pesan detail menggunakan Query
                 const fetchedMessages = await getMessagesQuery(selectedChat.recipientId);
                 setMessages(fetchedMessages);
             } catch (error) {
                 console.error("Failed to fetch messages:", error);
             }
+            if (selectedChat.conversationId) {
+                markMessageAsRead(selectedChat.conversationId, selectedChat.recipientId);
+                setConversations((prev) => {
+                    return prev.map((chat) => {
+                        if (chat.id === selectedChat.conversationId) {
+                            return { ...chat, unreadCount: 0 };
+                        }
+                        return chat;
+                    });
+                });
+            }
         };
 
         loadMessages();
-    }, [selectedChat?.recipientId, setMessages]);
+    }, [selectedChat?.recipientId, selectedChat?.conversationId, setMessages, markMessageAsRead]);
 
     // --- 4. Scroll to Bottom saat ada pesan baru di chat window ---
     useEffect(() => {
@@ -163,22 +182,15 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
 
     const handleSendMessage = (e?: React.FormEvent) => {
         e?.preventDefault();
-
-        // Validasi input
         if (!inputText.trim() || !selectedChat) return;
 
-        const content = inputText; // Simpan teks sebelum di-clear
+        const content = inputText;
         const timestamp = new Date();
 
-        // 1. Kirim ke Socket (agar Backend proses & Chat Tengah update)
         sendMessage(content, selectedChat.recipientId);
 
-        // 2. [LOGIKA BARU] Update Sidebar "All Chat" secara Manual (Optimistic Update)
         setConversations((prev) => {
             const updatedList = [...prev];
-
-            // Cari percakapan yang sedang aktif di list sidebar
-            // Kita gunakan conversationId jika ada, atau cari manual via recipientId/userId
             const chatIndex = updatedList.findIndex(
                 (c) =>
                     c.id === selectedChat.conversationId ||
@@ -187,26 +199,19 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
             );
 
             if (chatIndex !== -1) {
-                // KASUS A: Chat sudah ada di sidebar
                 const activeChat = { ...updatedList[chatIndex] };
-
-                // Update Last Message seolah-olah sudah sukses
                 activeChat.lastMessage = {
-                    id: `temp-${Date.now()}`, // ID sementara
+                    id: `temp-${Date.now()}`,
                     content: content,
                     createdAt: timestamp,
                     senderId: currentUserId,
                     isRead: false,
                 };
 
-                // Pindahkan chat ini ke posisi paling ATAS (index 0)
                 updatedList.splice(chatIndex, 1);
                 updatedList.unshift(activeChat);
             } else {
-                // KASUS B: Chat BARU (Belum ada di sidebar sebelumnya)
-                // Kita buat object percakapan baru secara manual agar langsung muncul
                 const newConversationStub: any = {
-                    // Gunakan 'any' atau sesuaikan interface ChatConversation
                     id: selectedChat.conversationId || `temp-conv-${Date.now()}`,
                     creator: { id: currentUserId }, // Dummy creator
                     recipient: {
@@ -226,14 +231,12 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
                     type: "private",
                 };
 
-                // Masukkan ke paling atas
                 updatedList.unshift(newConversationStub);
             }
 
             return updatedList;
         });
 
-        // Clear input form
         setInputText("");
     };
 
