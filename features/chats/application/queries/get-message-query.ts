@@ -1,7 +1,7 @@
 import { API_BASE_URL } from "@/configs/api-base-url";
 import { getAuthHeaders } from "@/helpers/get-auth-headers";
 
-export async function getMessages(recipientId: string, limit = 20, offset = 0) {
+export async function getMessagesQuery(recipientId: string, limit = 20, offset = 0) {
     try {
         const headers = await getAuthHeaders();
         const response = await fetch(

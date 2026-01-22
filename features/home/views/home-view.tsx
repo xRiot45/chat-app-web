@@ -1,26 +1,21 @@
 "use client";
 
-import AllChat from "@/components/all-chat";
 import ButtonGrouping from "@/components/button-grouping";
-import PinnedChat from "@/components/pinned-chat";
 import SearchInput from "@/components/search-input";
 import Stories from "@/components/stories";
 import { Avatar } from "@/components/ui/avatar";
 import User from "@/components/user";
 import { SHARED_MEDIA } from "@/constants/shared-media";
 import { STORIES } from "@/constants/stories";
-import { getMessages } from "@/features/chats/application/actions/get-message-action";
-import { getRecentMessages } from "@/features/chats/application/actions/get-recent-message-action";
-
-// --- UPDATED IMPORTS (Menggunakan Queries, bukan Actions) ---
-
+import { getMessagesQuery } from "@/features/chats/application/queries/get-message-query";
+import { getRecentMessagesQuery } from "@/features/chats/application/queries/get-recent-message-query";
 import { useChatSocket } from "@/features/chats/hooks/use-chat-socket";
 import { ActiveChatSession, MobileViewType } from "@/features/chats/interfaces";
+import AllChatView, { ChatConversation } from "@/features/chats/views/all-chat-view";
 import ChatMainView from "@/features/chats/views/chat-main-view";
 import ContactListsView from "@/features/contacts/views/contact-lists-view";
 import SettingView from "@/features/settings/views/setting-view";
 import { cn } from "@/lib/utils";
-
 import { Bell, ChevronLeft, ChevronRight, Download, FileText, Heart, LogOut, Search, Send, X } from "lucide-react";
 import Image from "next/image";
 import React, { useEffect, useRef, useState } from "react";
@@ -32,7 +27,9 @@ interface ChatClientPageProps {
 
 export default function HomeView({ token, currentUserId }: ChatClientPageProps) {
     const [isDarkMode, setIsDarkMode] = useState(true);
-    const [conversations, setConversations] = useState([]);
+
+    // --- State Management dengan Type Safety ---
+    const [conversations, setConversations] = useState<ChatConversation[]>([]);
     const [selectedChat, setSelectedChat] = useState<ActiveChatSession | null>(null);
     const [mobileView, setMobileView] = useState<MobileViewType>("list");
     const [showRightPanel, setShowRightPanel] = useState(true);
@@ -46,34 +43,102 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     // --- Socket Integration ---
-    const { messages, sendMessage, setMessages } = useChatSocket({
+    // Pastikan hook useChatSocket mengembalikan instance 'socket'
+    const { messages, sendMessage, setMessages, socket } = useChatSocket({
         token,
         currentUserId,
         activeRecipientId: selectedChat?.recipientId,
     });
 
-    // --- 1. FETCH CONVERSATIONS (CHAT LIST) ---
+    // --- 1. FETCH RECENT CONVERSATIONS (HTTP Initial Load) ---
     useEffect(() => {
         const fetchRecentMessages = async () => {
             try {
-                const data = await getRecentMessages();
-                setConversations(data || []);
+                const data = await getRecentMessagesQuery();
+                if (Array.isArray(data)) {
+                    setConversations(data);
+                } else {
+                    setConversations([]);
+                }
             } catch (error) {
-                console.error("Failed to load conversations:", error);
+                console.error("Failed to load recent messages:", error);
+                setConversations([]);
             }
         };
         fetchRecentMessages();
     }, []);
 
-    // --- 2. FETCH MESSAGES SAAT CHAT DIPILIH (REPLACING useActionState) ---
+    // --- 2. WEBSOCKET LISTENER (Real-time Sidebar Update) ---
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleSidebarUpdate = (newMessage: any) => {
+            console.log("Socket Update Sidebar:", newMessage); // Debugging
+
+            setConversations((prev) => {
+                const updatedList = [...prev];
+
+                // 1. Cari apakah percakapan ini sudah ada di list?
+                const existingIndex = updatedList.findIndex((c) => c.id === newMessage.conversationId);
+
+                if (existingIndex !== -1) {
+                    // KASUS A: Percakapan sudah ada
+                    // Ambil data chat lama
+                    const chatToUpdate = { ...updatedList[existingIndex] };
+
+                    // Update lastMessage dengan pesan baru dari socket
+                    chatToUpdate.lastMessage = {
+                        id: newMessage.id,
+                        content: newMessage.content,
+                        createdAt: newMessage.createdAt,
+                        senderId: newMessage.senderId,
+                        isRead: false, // Pesan baru pasti unread
+                    };
+
+                    // Update Unread Count (Opsional)
+                    // Jika pengirim BUKAN saya, tambah unread count
+                    if (newMessage.senderId !== currentUserId) {
+                        chatToUpdate.unreadCount = (chatToUpdate.unreadCount || 0) + 1;
+                    }
+
+                    // Pindahkan ke paling ATAS (Shift position)
+                    updatedList.splice(existingIndex, 1);
+                    updatedList.unshift(chatToUpdate);
+                } else {
+                    // KASUS B: Percakapan Baru (Belum ada di sidebar)
+                    // Solusi Cepat: Fetch ulang API agar data creator/recipient lengkap
+                    // Atau jika backend mengirim data lengkap di socket, bisa push manual.
+                    // getRecentMessagesQuery().then((data) => setConversations(data || []));
+                }
+
+                return updatedList;
+            });
+        };
+
+        // --- PENTING: Sesuaikan nama event dengan Backend NestJS Anda ---
+        // Biasanya backend meng-emit event 'message' atau 'receive_message'
+        socket.on("message", handleSidebarUpdate);
+
+        // Jika Anda ingin sidebar update saat ANDA mengirim pesan juga:
+        // socket.on("message_sent", handleSidebarUpdate);
+
+        return () => {
+            socket.off("message", handleSidebarUpdate);
+            // socket.off("message_sent", handleSidebarUpdate);
+        };
+    }, [socket, currentUserId]);
+
+    // --- 3. FETCH MESSAGES SAAT CHAT DIPILIH ---
     useEffect(() => {
         const loadMessages = async () => {
             if (!selectedChat?.recipientId) return;
 
+            // Reset pesan agar tidak flashing
             setMessages([]);
 
             try {
-                const fetchedMessages = await getMessages(selectedChat.recipientId);
+                // Fetch pesan detail menggunakan Query
+                const fetchedMessages = await getMessagesQuery(selectedChat.recipientId);
                 setMessages(fetchedMessages);
             } catch (error) {
                 console.error("Failed to fetch messages:", error);
@@ -83,7 +148,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
         loadMessages();
     }, [selectedChat?.recipientId, setMessages]);
 
-    // --- 3. Scroll to Bottom saat ada pesan baru ---
+    // --- 4. Scroll to Bottom saat ada pesan baru di chat window ---
     useEffect(() => {
         if (messages.length > 0) {
             messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -98,19 +163,86 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
 
     const handleSendMessage = (e?: React.FormEvent) => {
         e?.preventDefault();
+
+        // Validasi input
         if (!inputText.trim() || !selectedChat) return;
 
-        // Hook menangani Optimistic UI & Emit Socket
-        sendMessage(inputText, selectedChat.recipientId);
+        const content = inputText; // Simpan teks sebelum di-clear
+        const timestamp = new Date();
+
+        // 1. Kirim ke Socket (agar Backend proses & Chat Tengah update)
+        sendMessage(content, selectedChat.recipientId);
+
+        // 2. [LOGIKA BARU] Update Sidebar "All Chat" secara Manual (Optimistic Update)
+        setConversations((prev) => {
+            const updatedList = [...prev];
+
+            // Cari percakapan yang sedang aktif di list sidebar
+            // Kita gunakan conversationId jika ada, atau cari manual via recipientId/userId
+            const chatIndex = updatedList.findIndex(
+                (c) =>
+                    c.id === selectedChat.conversationId ||
+                    c.recipient?.id === selectedChat.recipientId ||
+                    c.creator?.id === selectedChat.recipientId,
+            );
+
+            if (chatIndex !== -1) {
+                // KASUS A: Chat sudah ada di sidebar
+                const activeChat = { ...updatedList[chatIndex] };
+
+                // Update Last Message seolah-olah sudah sukses
+                activeChat.lastMessage = {
+                    id: `temp-${Date.now()}`, // ID sementara
+                    content: content,
+                    createdAt: timestamp,
+                    senderId: currentUserId,
+                    isRead: false,
+                };
+
+                // Pindahkan chat ini ke posisi paling ATAS (index 0)
+                updatedList.splice(chatIndex, 1);
+                updatedList.unshift(activeChat);
+            } else {
+                // KASUS B: Chat BARU (Belum ada di sidebar sebelumnya)
+                // Kita buat object percakapan baru secara manual agar langsung muncul
+                const newConversationStub: any = {
+                    // Gunakan 'any' atau sesuaikan interface ChatConversation
+                    id: selectedChat.conversationId || `temp-conv-${Date.now()}`,
+                    creator: { id: currentUserId }, // Dummy creator
+                    recipient: {
+                        id: selectedChat.recipientId,
+                        fullName: selectedChat.name,
+                        avatarUrl: selectedChat.avatar,
+                        username: selectedChat.name,
+                    },
+                    lastMessage: {
+                        id: `temp-${Date.now()}`,
+                        content: content,
+                        createdAt: timestamp,
+                        senderId: currentUserId,
+                        isRead: false,
+                    },
+                    unreadCount: 0,
+                    type: "private",
+                };
+
+                // Masukkan ke paling atas
+                updatedList.unshift(newConversationStub);
+            }
+
+            return updatedList;
+        });
+
+        // Clear input form
         setInputText("");
     };
 
-    // --- UPDATED HANDLER: Mapping Data API ke ActiveChatSession ---
-    const handleChatSelect = (chat: any) => {
-        let targetRecipientId = chat.id; // Default fallback
+    const handleChatSelect = (chat: ChatConversation | any) => {
+        let targetRecipientId = chat.id;
         let targetName = chat.name;
         let targetAvatar = chat.avatar;
 
+        // Logic Mapping dari DTO API ke ActiveChatSession
         if (chat.creator && chat.recipient) {
             const isMeCreator = chat.creator.id === currentUserId;
             const targetUser = isMeCreator ? chat.recipient : chat.creator;
@@ -119,6 +251,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
             targetName = targetUser.fullName || targetUser.username;
             targetAvatar = targetUser.avatarUrl;
         } else if (chat.userId) {
+            // Fallback untuk struktur data lama (jika ada)
             targetRecipientId = chat.userId;
         }
 
@@ -138,7 +271,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
 
     const handleStartMessage = (contact: any) => {
         const newChatData: ActiveChatSession = {
-            conversationId: undefined, // Belum ada ID percakapan
+            conversationId: undefined,
             recipientId: contact.contactUser.id,
             name: contact.alias || contact.contactUser.fullName || contact.contactUser.username,
             avatar: contact.contactUser.avatarUrl || "",
@@ -151,7 +284,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
         setMobileView("chat");
     };
 
-    // -- STORY HANDLERS (TIDAK BERUBAH) --
+    // -- STORY HANDLERS (No Change) --
     const openStory = (index: number) => setStoryIndex(index);
     const closeStory = () => setStoryIndex(null);
 
@@ -194,7 +327,6 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
                     mobileView === "list" ? "flex w-full md:w-112.5 lg:w-125" : "hidden md:flex md:w-112.5 lg:w-125",
                 )}
             >
-                {/* === STANDARD CHAT LIST CONTENT === */}
                 {/* Header */}
                 <div className="px-5 py-4 flex items-center justify-between shrink-0">
                     <User />
@@ -214,14 +346,11 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
 
                 {/* Chat Lists */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar px-3 space-y-6 pt-2 pb-4">
-                    {/* Pinned Section */}
-                    <PinnedChat handleChatSelect={handleChatSelect} selectedChat={selectedChat} />
-
-                    <AllChat
+                    <AllChatView
                         data={conversations}
+                        currentUserId={currentUserId}
                         handleChatSelect={handleChatSelect}
                         selectedChat={selectedChat}
-                        currentUserId={currentUserId}
                     />
                 </div>
 
@@ -233,7 +362,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
                 />
             </aside>
 
-            {/* === SETTINGS SIDEBAR (Full Overlay) === */}
+            {/* === SETTINGS SIDEBAR === */}
             <SettingView isSettingsOpen={isSettingsOpen} setIsSettingsOpen={setIsSettingsOpen} />
 
             {/* === CENTER MAIN CHAT === */}
@@ -256,13 +385,8 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
             {selectedChat && showRightPanel && (
                 <aside
                     className={cn(
-                        // Base Styles
                         "h-full z-50 flex flex-col transition-all duration-300 border-l border-slate-200 dark:border-white/5",
-
-                        // MOBILE VIEW (Full Screen Overlay)
                         "fixed inset-0 w-full bg-white/95 dark:bg-[#0f1115]/95 backdrop-blur-xl",
-
-                        // DESKTOP VIEW (Sidebar Mode)
                         "lg:relative lg:w-100 lg:bg-white/60 lg:dark:bg-[#0f1115]/80 lg:backdrop-blur-2xl",
                     )}
                 >
@@ -411,7 +535,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
                         <div className="absolute top-4 left-0 right-0 p-4 z-30 flex items-center justify-between pt-6">
                             <div className="flex items-center gap-3">
                                 <Avatar className="w-10 h-10 border border-white/20">
-                                    <img src={STORIES[storyIndex].img} alt="story" />
+                                    <Image width={90} height={90} src={STORIES[storyIndex].img} alt="story" />
                                 </Avatar>
                                 <div>
                                     <p className="text-white font-bold text-sm shadow-black drop-shadow-md">
@@ -449,7 +573,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
                         </div>
 
                         {/* Footer Reply Input */}
-                        <div className="p-4 z-30 bg-gradient-to-t from-black/80 to-transparent pb-8 md:pb-6">
+                        <div className="p-4 z-30 bg-linear-to-t from-black/80 to-transparent pb-8 md:pb-6">
                             <div className="flex items-center gap-3">
                                 <input
                                     type="text"

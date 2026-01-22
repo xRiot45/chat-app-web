@@ -1,8 +1,11 @@
+"use client";
+
+import { Badge } from "@/components/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ActiveChatSession } from "@/features/chats/interfaces";
+import { formatTime } from "@/helpers/format-time";
 import { cn } from "@/lib/utils";
 import { CheckCheck, MessageSquare } from "lucide-react";
-import { Badge } from "./badge";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 // --- 1. DEFINISI TIPE DATA (Updated sesuai JSON) ---
 
@@ -41,25 +44,7 @@ interface AllChatProps {
     selectedChat: ActiveChatSession | null;
 }
 
-export default function AllChat({ data, currentUserId, handleChatSelect, selectedChat }: AllChatProps) {
-    // Helper untuk memformat waktu
-    const formatTime = (dateInput: string | Date | undefined): string => {
-        if (!dateInput) return "";
-        const date = new Date(dateInput);
-        const now = new Date();
-
-        if (isNaN(date.getTime())) return "";
-
-        const isToday =
-            date.getDate() === now.getDate() &&
-            date.getMonth() === now.getMonth() &&
-            date.getFullYear() === now.getFullYear();
-
-        return isToday
-            ? date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
-            : date.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
-    };
-
+export default function AllChatView({ data, currentUserId, handleChatSelect, selectedChat }: AllChatProps) {
     return (
         <div>
             <div className="flex items-center gap-2 px-3 mb-2 text-xs font-bold text-slate-400 uppercase tracking-wider">

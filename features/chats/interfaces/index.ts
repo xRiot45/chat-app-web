@@ -25,6 +25,7 @@ export interface Message {
     updatedAt: string;
     readAt?: string;
     isPending?: boolean;
+    isRead?: boolean;
 }
 
 export interface ActiveChatSession {
