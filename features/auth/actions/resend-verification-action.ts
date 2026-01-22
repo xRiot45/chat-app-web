@@ -1,9 +1,8 @@
 "use server";
 
+import { API_BASE_URL } from "@/configs/api-base-url";
 import { resendVerificationSchema } from "../schemas/resend-verification-schema";
 import { ActionState } from "../types";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
 
 export async function resendVerificationAction(prevState: ActionState, formData: FormData): Promise<ActionState> {
     const validatedFields = resendVerificationSchema.safeParse({

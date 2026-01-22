@@ -1,10 +1,9 @@
 "use server";
 
+import { API_BASE_URL } from "@/configs/api-base-url";
 import { cookies } from "next/headers";
 import { loginSchema } from "../schemas/login-schema";
 import { ActionState } from "../types";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
 
 export async function loginAction(prevState: ActionState, formData: FormData): Promise<ActionState> {
     const validatedFields = loginSchema.safeParse({
@@ -25,7 +24,9 @@ export async function loginAction(prevState: ActionState, formData: FormData): P
     try {
         const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+            },
             body: JSON.stringify(payload),
         });
 
@@ -48,6 +49,14 @@ export async function loginAction(prevState: ActionState, formData: FormData): P
         const cookieStore = await cookies();
 
         cookieStore.set("accessToken", data?.data?.accessToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            path: "/",
+            maxAge: 60 * 60 * 24,
+            sameSite: "lax",
+        });
+
+        cookieStore.set("refreshToken", data?.data?.refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             path: "/",

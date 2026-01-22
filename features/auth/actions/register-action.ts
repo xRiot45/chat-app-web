@@ -1,10 +1,9 @@
 "use server";
 
+import { API_BASE_URL } from "@/configs/api-base-url";
 import { cookies } from "next/headers";
 import { registerSchema } from "../schemas/register-schema";
 import { ActionState } from "../types";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
 
 export async function registerAction(prevState: ActionState, formData: FormData): Promise<ActionState> {
     const validatedFields = registerSchema.safeParse({
