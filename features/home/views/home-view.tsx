@@ -9,17 +9,21 @@ import { Avatar } from "@/components/ui/avatar";
 import User from "@/components/user";
 import { SHARED_MEDIA } from "@/constants/shared-media";
 import { STORIES } from "@/constants/stories";
-import { getMessagesAction } from "@/features/chats/actions/get-message-action";
+import { getMessages } from "@/features/chats/application/actions/get-message-action";
+import { getRecentMessages } from "@/features/chats/application/actions/get-recent-message-action";
+
+// --- UPDATED IMPORTS (Menggunakan Queries, bukan Actions) ---
+
 import { useChatSocket } from "@/features/chats/hooks/use-chat-socket";
 import { ActiveChatSession, MobileViewType } from "@/features/chats/interfaces";
 import ChatMainView from "@/features/chats/views/chat-main-view";
 import ContactListsView from "@/features/contacts/views/contact-lists-view";
 import SettingView from "@/features/settings/views/setting-view";
 import { cn } from "@/lib/utils";
-import { initialActionState } from "@/types/action-state";
+
 import { Bell, ChevronLeft, ChevronRight, Download, FileText, Heart, LogOut, Search, Send, X } from "lucide-react";
 import Image from "next/image";
-import React, { useActionState, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 interface ChatClientPageProps {
     token: string;
@@ -28,49 +32,55 @@ interface ChatClientPageProps {
 
 export default function HomeView({ token, currentUserId }: ChatClientPageProps) {
     const [isDarkMode, setIsDarkMode] = useState(true);
-
-    // --- State Type Updated to ActiveChatSession ---
+    const [conversations, setConversations] = useState([]);
     const [selectedChat, setSelectedChat] = useState<ActiveChatSession | null>(null);
     const [mobileView, setMobileView] = useState<MobileViewType>("list");
     const [showRightPanel, setShowRightPanel] = useState(true);
-
     const [inputText, setInputText] = useState("");
 
     // -- MODALS / SIDEBAR STATE --
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [storyIndex, setStoryIndex] = useState<number | null>(null);
-
-    // -- SETTINGS SIDEBAR STATE --
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    const [state, formAction] = useActionState(getMessagesAction, initialActionState);
-
-    // Socket Integration
+    // --- Socket Integration ---
     const { messages, sendMessage, setMessages } = useChatSocket({
         token,
         currentUserId,
         activeRecipientId: selectedChat?.recipientId,
     });
 
+    // --- 1. FETCH CONVERSATIONS (CHAT LIST) ---
     useEffect(() => {
-        if (state.status === "success" && state.data) {
-            setMessages(Array.isArray(state.data) ? state.data : []);
-        }
-    }, [setMessages, state]);
+        const fetchRecentMessages = async () => {
+            try {
+                const data = await getRecentMessages();
+                setConversations(data || []);
+            } catch (error) {
+                console.error("Failed to load conversations:", error);
+            }
+        };
+        fetchRecentMessages();
+    }, []);
 
+    // --- 2. FETCH MESSAGES SAAT CHAT DIPILIH (REPLACING useActionState) ---
     useEffect(() => {
-        if (selectedChat?.recipientId) {
+        const loadMessages = async () => {
+            if (!selectedChat?.recipientId) return;
+
             setMessages([]);
 
-            const formData = new FormData();
-            formData.append("recipientId", selectedChat.recipientId);
-            formData.append("limit", "20");
-            formData.append("offset", "0");
+            try {
+                const fetchedMessages = await getMessages(selectedChat.recipientId);
+                setMessages(fetchedMessages);
+            } catch (error) {
+                console.error("Failed to fetch messages:", error);
+            }
+        };
 
-            formAction(formData);
-        }
+        loadMessages();
     }, [selectedChat?.recipientId, setMessages]);
 
     // --- 3. Scroll to Bottom saat ada pesan baru ---
@@ -90,24 +100,36 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
         e?.preventDefault();
         if (!inputText.trim() || !selectedChat) return;
 
-        // [BARU] Panggil fungsi sendMessage dari Hook
-        // Hook akan menangani Optimistic UI (tambah langsung ke state) & Emit ke Socket
+        // Hook menangani Optimistic UI & Emit Socket
         sendMessage(inputText, selectedChat.recipientId);
         setInputText("");
     };
 
+    // --- UPDATED HANDLER: Mapping Data API ke ActiveChatSession ---
     const handleChatSelect = (chat: any) => {
-        const targetRecipientId = chat.userId || chat.participants?.[0]?.id || chat.id;
-        console.log(targetRecipientId);
+        let targetRecipientId = chat.id; // Default fallback
+        let targetName = chat.name;
+        let targetAvatar = chat.avatar;
+
+        if (chat.creator && chat.recipient) {
+            const isMeCreator = chat.creator.id === currentUserId;
+            const targetUser = isMeCreator ? chat.recipient : chat.creator;
+
+            targetRecipientId = targetUser.id;
+            targetName = targetUser.fullName || targetUser.username;
+            targetAvatar = targetUser.avatarUrl;
+        } else if (chat.userId) {
+            targetRecipientId = chat.userId;
+        }
 
         const mappedChat: ActiveChatSession = {
             conversationId: chat.id,
             recipientId: targetRecipientId,
-            name: chat.name,
-            avatar: chat.avatar,
+            name: targetName,
+            avatar: targetAvatar,
             type: chat.type || "private",
             status: chat.status || "OFFLINE",
-            members: chat.members,
+            members: chat.members || 2,
         };
 
         setSelectedChat(mappedChat);
@@ -116,7 +138,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
 
     const handleStartMessage = (contact: any) => {
         const newChatData: ActiveChatSession = {
-            conversationId: undefined,
+            conversationId: undefined, // Belum ada ID percakapan
             recipientId: contact.contactUser.id,
             name: contact.alias || contact.contactUser.fullName || contact.contactUser.username,
             avatar: contact.contactUser.avatarUrl || "",
@@ -129,7 +151,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
         setMobileView("chat");
     };
 
-    // -- STORY HANDLERS --
+    // -- STORY HANDLERS (TIDAK BERUBAH) --
     const openStory = (index: number) => setStoryIndex(index);
     const closeStory = () => setStoryIndex(null);
 
@@ -195,8 +217,12 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
                     {/* Pinned Section */}
                     <PinnedChat handleChatSelect={handleChatSelect} selectedChat={selectedChat} />
 
-                    {/* All Chats Section */}
-                    <AllChat handleChatSelect={handleChatSelect} selectedChat={selectedChat} />
+                    <AllChat
+                        data={conversations}
+                        handleChatSelect={handleChatSelect}
+                        selectedChat={selectedChat}
+                        currentUserId={currentUserId}
+                    />
                 </div>
 
                 {/* New Chat / Contact List Drawer */}
@@ -260,7 +286,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
                                         className="rounded-full"
                                         width={96}
                                         height={96}
-                                        src={selectedChat.avatar}
+                                        src={selectedChat.avatar || "https://i.pravatar.cc/150"}
                                         alt={selectedChat.name}
                                     />
                                 </Avatar>
