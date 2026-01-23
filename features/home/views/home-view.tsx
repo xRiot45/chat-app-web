@@ -2,11 +2,10 @@
 
 import ButtonGrouping from "@/components/button-grouping";
 import SearchInput from "@/components/search-input";
-import Stories from "@/components/stories";
 import { Avatar } from "@/components/ui/avatar";
 import User from "@/components/user";
 import { SHARED_MEDIA } from "@/constants/shared-media";
-import { STORIES } from "@/constants/stories";
+import { UserStatus } from "@/enums/user-status-enum";
 import { getMessagesQuery } from "@/features/chats/application/queries/get-message-query";
 import { getRecentMessagesQuery } from "@/features/chats/application/queries/get-recent-message-query";
 import { useChatSocket } from "@/features/chats/hooks/use-chat-socket";
@@ -14,11 +13,13 @@ import { ActiveChatSession, MobileViewType } from "@/features/chats/interfaces";
 import { ChatConversation } from "@/features/chats/interfaces/message-interface";
 import AllChatView from "@/features/chats/views/all-chat-view";
 import ChatMainView from "@/features/chats/views/chat-main-view";
+import { Contact } from "@/features/contacts/interfaces/contact";
 import ContactListsView from "@/features/contacts/views/contact-lists-view";
 import SettingView from "@/features/settings/views/setting-view";
+import StoriesView from "@/features/stories/views/stories-view";
 import { cn } from "@/lib/utils";
 import { useThemeContext } from "@/providers/theme-provider";
-import { Bell, ChevronLeft, ChevronRight, Download, FileText, Heart, LogOut, Search, Send, X } from "lucide-react";
+import { Bell, Download, FileText, Heart, LogOut, Search, X } from "lucide-react";
 import Image from "next/image";
 import React, { useEffect, useRef, useState } from "react";
 
@@ -35,7 +36,6 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
     const [showRightPanel, setShowRightPanel] = useState(true);
     const [inputText, setInputText] = useState("");
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [storyIndex, setStoryIndex] = useState<number | null>(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -236,7 +236,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
         setInputText("");
     };
 
-    const handleChatSelect = (chat: ChatConversation | any) => {
+    const handleChatSelect = (chat: ChatConversation) => {
         let targetRecipientId = chat.id;
         let targetName = chat.name;
         let targetAvatar = chat.avatar;
@@ -250,7 +250,6 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
             targetName = targetUser.fullName || targetUser.username;
             targetAvatar = targetUser.avatarUrl;
         } else if (chat.userId) {
-            // Fallback untuk struktur data lama (jika ada)
             targetRecipientId = chat.userId;
         }
 
@@ -268,39 +267,19 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
         setMobileView("chat");
     };
 
-    const handleStartMessage = (contact: any) => {
+    const handleStartMessage = (contact: Contact) => {
         const newChatData: ActiveChatSession = {
             conversationId: undefined,
             recipientId: contact.contactUser.id,
             name: contact.alias || contact.contactUser.fullName || contact.contactUser.username,
             avatar: contact.contactUser.avatarUrl || "",
             type: "private",
-            status: "ONLINE",
+            status: UserStatus.ONLINE,
             members: 2,
         };
 
         setSelectedChat(newChatData);
         setMobileView("chat");
-    };
-
-    // -- STORY HANDLERS (No Change) --
-    const openStory = (index: number) => setStoryIndex(index);
-    const closeStory = () => setStoryIndex(null);
-
-    const nextStory = (e?: React.MouseEvent) => {
-        e?.stopPropagation();
-        if (storyIndex !== null && storyIndex < STORIES.length - 1) {
-            setStoryIndex(storyIndex + 1);
-        } else {
-            closeStory();
-        }
-    };
-
-    const prevStory = (e?: React.MouseEvent) => {
-        e?.stopPropagation();
-        if (storyIndex !== null && storyIndex > 0) {
-            setStoryIndex(storyIndex - 1);
-        }
     };
 
     return (
@@ -333,7 +312,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
                 </div>
 
                 {/* Stories / Status Bar */}
-                <Stories openStory={openStory} />
+                <StoriesView />
 
                 {/* Search */}
                 <SearchInput placeholder="Search or start a new chat" />
@@ -498,108 +477,6 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
                         </div>
                     </div>
                 </aside>
-            )}
-
-            {/* ================= STORY VIEWER MODAL ================= */}
-            {storyIndex !== null && (
-                <div className="fixed inset-0 z-60 bg-black flex items-center justify-center animate-in fade-in duration-300">
-                    {/* Background Blur */}
-                    <div
-                        className="absolute inset-0 opacity-40 bg-center bg-cover blur-3xl scale-110"
-                        style={{ backgroundImage: `url(${STORIES[storyIndex].img})` }}
-                    ></div>
-
-                    {/* Main Content Container */}
-                    <div className="relative w-full h-full md:max-w-md md:h-[90vh] bg-black md:rounded-3xl overflow-hidden flex flex-col shadow-2xl border border-white/10 z-10">
-                        {/* Progress Bars */}
-                        <div className="absolute top-0 left-0 right-0 p-3 z-30 flex gap-1.5">
-                            {STORIES.map((_, idx) => (
-                                <div key={idx} className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
-                                    <div
-                                        className={cn(
-                                            "h-full bg-white transition-all duration-300",
-                                            idx < storyIndex ? "w-full" : idx === storyIndex ? "w-1/2" : "w-0",
-                                        )}
-                                    ></div>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Header Story */}
-                        <div className="absolute top-4 left-0 right-0 p-4 z-30 flex items-center justify-between pt-6">
-                            <div className="flex items-center gap-3">
-                                <Avatar className="w-10 h-10 border border-white/20">
-                                    <Image width={90} height={90} src={STORIES[storyIndex].img} alt="story" />
-                                </Avatar>
-                                <div>
-                                    <p className="text-white font-bold text-sm shadow-black drop-shadow-md">
-                                        {STORIES[storyIndex].name}
-                                    </p>
-                                    <p className="text-white/70 text-xs shadow-black drop-shadow-md">
-                                        {STORIES[storyIndex].time}
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={closeStory}
-                                className="p-2 rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-md transition-colors"
-                            >
-                                <X className="w-6 h-6" />
-                            </button>
-                        </div>
-
-                        {/* Image / Content */}
-                        <div className="flex-1 relative flex items-center justify-center bg-black">
-                            <Image
-                                fill
-                                src={STORIES[storyIndex].img}
-                                className="w-full h-auto max-h-full object-contain"
-                                alt="Story Content"
-                            />
-                            <div
-                                className="absolute inset-y-0 left-0 w-1/3 z-20 cursor-pointer"
-                                onClick={prevStory}
-                            ></div>
-                            <div
-                                className="absolute inset-y-0 right-0 w-1/3 z-20 cursor-pointer"
-                                onClick={nextStory}
-                            ></div>
-                        </div>
-
-                        {/* Footer Reply Input */}
-                        <div className="p-4 z-30 bg-linear-to-t from-black/80 to-transparent pb-8 md:pb-6">
-                            <div className="flex items-center gap-3">
-                                <input
-                                    type="text"
-                                    placeholder="Kirim pesan..."
-                                    className="flex-1 bg-transparent border border-white/30 rounded-full py-3 px-5 text-white placeholder:text-white/60 focus:border-white outline-none backdrop-blur-md text-sm"
-                                />
-                                <button className="p-3 rounded-full border border-white/30 text-white hover:bg-white/20 backdrop-blur-md">
-                                    <Heart className="w-5 h-5" />
-                                </button>
-                                <button className="p-3 rounded-full border border-white/30 text-white hover:bg-white/20 backdrop-blur-md">
-                                    <Send className="w-5 h-5" />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Desktop Navigation Buttons Outside */}
-                    <button
-                        onClick={prevStory}
-                        className="hidden md:flex absolute left-8 p-4 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md disabled:opacity-0 transition-all z-20"
-                        disabled={storyIndex === 0}
-                    >
-                        <ChevronLeft className="w-8 h-8" />
-                    </button>
-                    <button
-                        onClick={nextStory}
-                        className="hidden md:flex absolute right-8 p-4 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md disabled:opacity-0 transition-all z-20"
-                        disabled={storyIndex === STORIES.length - 1}
-                    >
-                        <ChevronRight className="w-8 h-8" />
-                    </button>
-                </div>
             )}
         </div>
     );
