@@ -11,13 +11,6 @@ import { redirect } from "next/navigation";
 export async function logoutAction(_prevState: ActionState, _formData: FormData): Promise<ActionState> {
     const authHeaders = await getAuthHeaders();
 
-    if (!authHeaders) {
-        return {
-            status: "error",
-            message: "Session expired. Please log in again.",
-        };
-    }
-
     try {
         await fetch(`${API_BASE_URL}/api/auth/logout`, {
             method: "POST",

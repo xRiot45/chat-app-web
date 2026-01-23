@@ -1,9 +1,9 @@
 "use server";
 
 import { API_BASE_URL } from "@/configs/api-base-url";
+import { ActionState } from "@/types/action-state";
 import { cookies } from "next/headers";
-import { registerSchema } from "../schemas/register-schema";
-import { ActionState } from "../types";
+import { registerSchema } from "../../schemas/register-schema";
 
 export async function registerAction(prevState: ActionState, formData: FormData): Promise<ActionState> {
     const validatedFields = registerSchema.safeParse({

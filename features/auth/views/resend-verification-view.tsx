@@ -1,46 +1,36 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import { useThemeContext } from "@/providers/theme-provider";
+import { initialActionState } from "@/types/action-state";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, CheckCircle2, Loader2, Mail, MessageCircle, Moon, Send, ShieldCheck, Sun } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, Mail, MessageCircle, Send, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useActionState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-
-import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { useTheme } from "@/hooks/useTheme";
-import { cn } from "@/lib/utils";
-
-// Features Import
-import { resendVerificationAction } from "../actions/resend-verification-action";
+import { resendVerificationAction } from "../application/actions/resend-verification-action";
 import { ResendVerificationInput, resendVerificationSchema } from "../schemas/resend-verification-schema";
-import { ActionState } from "../types";
 
-const initialState: ActionState = { status: "idle", message: "" };
-
-export const ResendVerificationView = () => {
+export default function ResendVerificationView() {
     const router = useRouter();
-    const { isDarkMode, toggleTheme } = useTheme();
+    const { isDarkMode } = useThemeContext();
 
-    // SERVER ACTION HOOK
-    const [state, formAction, isPending] = useActionState(resendVerificationAction, initialState);
-
-    // REACT HOOK FORM
+    const [state, formAction, isPending] = useActionState(resendVerificationAction, initialActionState);
     const form = useForm<ResendVerificationInput>({
         resolver: zodResolver(resendVerificationSchema),
         defaultValues: { email: "" },
     });
 
-    // EFFECT: Handle Response (Success/Error)
     useEffect(() => {
         if (state.status === "error") {
             toast.error("Gagal Mengirim", {
                 description: state.message,
             });
-            // Jika ada error field spesifik dari server
             if (state.errors?.email) {
                 form.setError("email", {
                     type: "server",
@@ -54,7 +44,7 @@ export const ResendVerificationView = () => {
                 description: state.message,
                 icon: <CheckCircle2 className="text-emerald-500" />,
             });
-            // Redirect ke halaman info
+
             router.push("/auth/verify-email");
         }
     }, [state, form, router]);
@@ -120,22 +110,6 @@ export const ResendVerificationView = () => {
 
             {/* --- RIGHT SIDE (Form UI) --- */}
             <div className="flex-1 flex flex-col justify-center items-center p-6 lg:p-12 relative bg-white dark:bg-[#0a0a0c]">
-                {/* Theme Toggle */}
-                <div className="absolute top-6 right-6 flex items-center gap-4">
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={toggleTheme}
-                        className="rounded-full border-slate-200 dark:border-white/10"
-                    >
-                        {isDarkMode ? (
-                            <Sun className="w-4 h-4 text-amber-400" />
-                        ) : (
-                            <Moon className="w-4 h-4 text-slate-600" />
-                        )}
-                    </Button>
-                </div>
-
                 <div className="w-full max-w-105 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
                     <div className="space-y-2">
                         <Link
@@ -215,4 +189,4 @@ export const ResendVerificationView = () => {
             </div>
         </div>
     );
-};
+}

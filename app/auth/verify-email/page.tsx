@@ -1,4 +1,4 @@
-import { VerifyEmailView } from "@/features/auth";
+import VerifyEmailView from "@/features/auth/views/verify-email-view";
 import { Loader2 } from "lucide-react";
 import { Metadata } from "next";
 import { Suspense } from "react";

@@ -1,4 +1,4 @@
-import { ResendVerificationView } from "@/features/auth";
+import ResendVerificationView from "@/features/auth/views/resend-verification-view";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {

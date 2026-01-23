@@ -1,9 +1,9 @@
 "use server";
 
 import { API_BASE_URL } from "@/configs/api-base-url";
+import { ActionState } from "@/types/action-state";
 import { cookies } from "next/headers";
-import { loginSchema } from "../schemas/login-schema";
-import { ActionState } from "../types";
+import { loginSchema } from "../../schemas/login-schema";
 
 export async function loginAction(prevState: ActionState, formData: FormData): Promise<ActionState> {
     const validatedFields = loginSchema.safeParse({

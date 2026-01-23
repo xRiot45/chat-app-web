@@ -1,8 +1,8 @@
 "use server";
 
 import { API_BASE_URL } from "@/configs/api-base-url";
-import { resendVerificationSchema } from "../schemas/resend-verification-schema";
-import { ActionState } from "../types";
+import { ActionState } from "@/types/action-state";
+import { resendVerificationSchema } from "../../schemas/resend-verification-schema";
 
 export async function resendVerificationAction(prevState: ActionState, formData: FormData): Promise<ActionState> {
     const validatedFields = resendVerificationSchema.safeParse({

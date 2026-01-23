@@ -4,8 +4,9 @@ import { CompanyLogo } from "@/components/company-logo";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
+import { useThemeContext } from "@/providers/theme-provider";
+import { initialActionState } from "@/types/action-state";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
     ArrowRight,
@@ -16,9 +17,7 @@ import {
     Lock,
     Mail,
     MessageCircle,
-    Moon,
     ShieldCheck,
-    Sun,
     User,
 } from "lucide-react";
 import Image from "next/image";
@@ -27,20 +26,14 @@ import { useRouter } from "next/navigation";
 import { startTransition, useActionState, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { registerAction } from "../actions/register-action";
+import { registerAction } from "../application/actions/register-action";
 import { RegisterInput, registerSchema } from "../schemas/register-schema";
-import { ActionState } from "../types";
 
-const initialState: ActionState = {
-    status: "idle",
-    message: "",
-};
-
-export const RegisterView = () => {
+export default function RegisterView() {
     const router = useRouter();
-    const { isDarkMode, toggleTheme } = useTheme();
+    const { isDarkMode } = useThemeContext();
     const [showPassword, setShowPassword] = useState(false);
-    const [state, formAction, isPending] = useActionState(registerAction, initialState);
+    const [state, formAction, isPending] = useActionState(registerAction, initialActionState);
 
     const form = useForm<RegisterInput>({
         resolver: zodResolver(registerSchema),
@@ -53,17 +46,6 @@ export const RegisterView = () => {
     });
 
     useEffect(() => {
-        if (state.status === "error") {
-            if (state.errors) {
-                Object.entries(state.errors).forEach(([key, errors]) => {
-                    form.setError(key as keyof RegisterInput, {
-                        type: "server",
-                        message: errors[0],
-                    });
-                });
-            }
-        }
-
         if (state.status === "success") {
             toast.success(state.message, {
                 description: "Silahkan Verifikasi Email Anda",
@@ -176,18 +158,6 @@ export const RegisterView = () => {
                             Sign In
                         </Button>
                     </Link>
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={toggleTheme}
-                        className="rounded-full w-10 h-10 border-slate-200 dark:border-white/10 bg-transparent hover:bg-slate-100 dark:hover:bg-white/5 transition-all"
-                    >
-                        {isDarkMode ? (
-                            <Sun className="w-4 h-4 text-amber-400" />
-                        ) : (
-                            <Moon className="w-4 h-4 text-slate-600" />
-                        )}
-                    </Button>
                 </div>
 
                 <div className="w-full max-w-110 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -375,4 +345,4 @@ export const RegisterView = () => {
             </div>
         </div>
     );
-};
+}

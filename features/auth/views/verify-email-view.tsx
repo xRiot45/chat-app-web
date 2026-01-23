@@ -1,19 +1,19 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
+import { useThemeContext } from "@/providers/theme-provider";
 import Cookies from "js-cookie";
-import { CheckCircle2, LogIn, Mail, MessageCircle, Moon, RefreshCw, ShieldCheck, Sun, XCircle } from "lucide-react";
+import { CheckCircle2, LogIn, Mail, MessageCircle, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { verifyEmailSchema } from "../schemas/verify-email-schema";
 
-export const VerifyEmailView = () => {
+export default function VerifyEmailView() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { isDarkMode, toggleTheme } = useTheme();
+    const { isDarkMode } = useThemeContext();
 
     const rawStatus = searchParams.get("status") ?? undefined;
     const rawCode = searchParams.get("code") ?? undefined;
@@ -92,22 +92,6 @@ export const VerifyEmailView = () => {
 
             {/* Right Side */}
             <div className="flex-1 flex flex-col justify-center items-center p-6 lg:p-12 relative bg-white dark:bg-[#0a0a0c]">
-                {/* Theme Toggle */}
-                <div className="absolute top-6 right-6 flex items-center gap-4">
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={toggleTheme}
-                        className="rounded-full border-slate-200 dark:border-white/10"
-                    >
-                        {isDarkMode ? (
-                            <Sun className="w-4 h-4 text-amber-400" />
-                        ) : (
-                            <Moon className="w-4 h-4 text-slate-600" />
-                        )}
-                    </Button>
-                </div>
-
                 <div className="w-full max-w-105 text-center space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
                     {/* Status Icon Animation */}
                     <div className="flex justify-center">
@@ -203,4 +187,4 @@ export const VerifyEmailView = () => {
             </div>
         </div>
     );
-};
+}

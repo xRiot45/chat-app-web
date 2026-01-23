@@ -4,29 +4,24 @@ import { CompanyLogo } from "@/components/company-logo";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
+import { useThemeContext } from "@/providers/theme-provider";
+import { initialActionState } from "@/types/action-state";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckCircle2, Eye, EyeOff, HelpCircle, Loader2, MessageCircle, Moon, Sun } from "lucide-react";
+import { CheckCircle2, Eye, EyeOff, HelpCircle, Loader2, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useActionState, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { loginAction } from "../actions/login-action";
+import { loginAction } from "../application/actions/login-action";
 import { LoginInput, loginSchema } from "../schemas/login-schema";
-import { ActionState } from "../types";
 
-const initialState: ActionState = {
-    status: "idle",
-    message: "",
-};
-
-export const LoginView = () => {
+export default function LoginView() {
     const router = useRouter();
+    const { isDarkMode } = useThemeContext();
     const [showPassword, setShowPassword] = useState(false);
-    const { isDarkMode, toggleTheme, mounted } = useTheme();
-    const [state, formAction, isPending] = useActionState(loginAction, initialState);
+    const [state, formAction, isPending] = useActionState(loginAction, initialActionState);
 
     const form = useForm<LoginInput>({
         resolver: zodResolver(loginSchema),
@@ -37,17 +32,6 @@ export const LoginView = () => {
     });
 
     useEffect(() => {
-        if (state.status === "error") {
-            if (state.errors) {
-                Object.entries(state.errors).forEach(([key, errors]) => {
-                    form.setError(key as keyof LoginInput, {
-                        type: "server",
-                        message: errors[0],
-                    });
-                });
-            }
-        }
-
         if (state.status === "success") {
             toast.success("Login Berhasil! Selamat datang kembali.");
             router.push("/");
@@ -63,8 +47,6 @@ export const LoginView = () => {
             formAction(formData);
         });
     };
-
-    if (!mounted) return null;
 
     return (
         <div
@@ -122,21 +104,6 @@ export const LoginView = () => {
 
             {/* Right Side */}
             <div className="flex-1 flex flex-col justify-center items-center p-6 lg:p-12 relative bg-white dark:bg-[#0a0a0c]">
-                <div className="absolute top-6 right-6 lg:top-12 lg:right-12 flex items-center gap-4 z-20">
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={toggleTheme}
-                        className="rounded-full border-slate-200 dark:border-white/10"
-                    >
-                        {isDarkMode ? (
-                            <Sun className="w-4 h-4 text-amber-400" />
-                        ) : (
-                            <Moon className="w-4 h-4 text-slate-600" />
-                        )}
-                    </Button>
-                </div>
-
                 <div className="w-full max-w-100 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
                     <div className="lg:hidden flex items-center gap-2 mb-4">
                         <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
@@ -275,4 +242,4 @@ export const LoginView = () => {
             </div>
         </div>
     );
-};
+}
