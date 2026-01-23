@@ -1,7 +1,7 @@
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { logoutAction } from "@/features/auth/actions/logout-action";
+import { logoutAction } from "@/features/auth/application/actions/logout-action";
 import { initialActionState } from "@/types/action-state";
 import { ArrowLeft, Bell, FileText, Globe, Loader2, LogOut, MessageSquare, Shield, UserPlus } from "lucide-react";
 import { startTransition, useActionState } from "react";
