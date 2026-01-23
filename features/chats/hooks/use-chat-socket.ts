@@ -1,8 +1,8 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { getSocket } from "@/lib/socket";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Socket } from "socket.io-client";
 import { CreateMessage, Message } from "../interfaces";
+import { TypedSocket } from "../interfaces/socket-interface";
 
 interface UseChatSocketProps {
     token: string;
@@ -13,16 +13,14 @@ interface UseChatSocketProps {
 export function useChatSocket({ token, currentUserId, activeRecipientId }: UseChatSocketProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [isConnected, setIsConnected] = useState(false);
-    const [socket, setSocket] = useState<Socket | null>(null);
+    const [socket, setSocket] = useState<TypedSocket | null>(null);
 
-    const socketRef = useRef<Socket | null>(null);
+    const socketRef = useRef<TypedSocket | null>(null);
 
     useEffect(() => {
         if (!token) return;
 
-        const socketInstance = getSocket(token);
-
-        // Simpan ke Ref (untuk internal function) & State (untuk dilempar ke parent)
+        const socketInstance: TypedSocket = getSocket(token);
         socketRef.current = socketInstance;
         setSocket(socketInstance);
 
@@ -30,43 +28,22 @@ export function useChatSocket({ token, currentUserId, activeRecipientId }: UseCh
             socketInstance.connect();
         }
 
-        function onConnect() {
-            setIsConnected(true);
-        }
+        const onConnect = () => setIsConnected(true);
+        const onDisconnect = () => setIsConnected(false);
 
-        function onDisconnect() {
-            setIsConnected(false);
-        }
-
-        // Listener pesan untuk ACTIVE CHAT (Chat yang sedang dibuka)
-        function onMessageReceived(newMessage: Message) {
+        const onMessageReceived = (newMessage: Message) => {
             setMessages((prev) => {
-                // Cegah duplikasi pesan
                 if (prev.some((m) => m.id === newMessage.id)) return prev;
 
-                // Logika Filter:
-                // Masukkan pesan ke state 'messages' HANYA JIKA:
-                // 1. Pesan datang dari orang yang sedang kita chat (activeRecipientId)
-                // 2. ATAU Pesan itu kita yang kirim (agar muncul realtime di layar kita sendiri)
                 const isFromActiveChat = newMessage.senderId === activeRecipientId;
                 const isFromMe = newMessage.senderId === currentUserId;
 
-                // [PENTING] Kita cek juga conversationId jika ada, untuk keamanan ganda
-                // const isSameConversation = newMessage.conversationId === activeConversationId;
-
-                if (isFromActiveChat || isFromMe) {
-                    return [...prev, newMessage];
-                }
-
-                return prev;
+                return isFromActiveChat || isFromMe ? [...prev, newMessage] : prev;
             });
-        }
+        };
 
-        // Event Listeners
         socketInstance.on("connect", onConnect);
         socketInstance.on("disconnect", onDisconnect);
-        // Pastikan nama event ini sesuai dengan Backend ('message' atau 'receive_message')
-        // Biasanya untuk chat room event-nya 'message', untuk notif global 'receive_message'
         socketInstance.on("message", onMessageReceived);
 
         return () => {
@@ -76,63 +53,33 @@ export function useChatSocket({ token, currentUserId, activeRecipientId }: UseCh
         };
     }, [token, activeRecipientId, currentUserId]);
 
-    // Function to send a message
-    const sendMessage = useCallback(
-        async (content: string, recipientId: string) => {
-            const socketInstance = socketRef.current;
-            if (!socketInstance || !socketInstance.connected) {
-                console.error("Cannot send message: Socket not connected");
-                return;
-            }
+    const sendMessage = useCallback(async (content: string, recipientId: string): Promise<Message> => {
+        const socketInstance = socketRef.current;
 
-            const payload: CreateMessage = {
-                recipientId,
-                content,
-            };
+        if (!socketInstance?.connected) {
+            throw new Error("Socket not connected");
+        }
 
-            const tempId = `temp-${Date.now()}`;
+        const payload: CreateMessage = {
+            recipientId,
+            content,
+        };
 
-            // Optimistic UI Update
-            const optimisticMessage: Message = {
-                id: tempId,
-                content: content,
-                senderId: currentUserId,
-                conversationId: "temp", // Backend akan mengembalikan ID asli nanti
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                sender: {
-                    id: currentUserId,
-                    username: "Me",
-                    fullName: "Me",
-                    avatarUrl: "",
-                    status: "ONLINE",
-                },
-                isPending: true,
-                isRead: false,
-            };
-
-            setMessages((prev) => [...prev, optimisticMessage]);
-
-            // Emit event 'sendMessage' to Backend
-            socketInstance.emit("sendMessage", payload, (response: Message) => {
-                if (response && response.id) {
-                    // Sukses: Ganti pesan temp dengan pesan asli dari server
-                    setMessages((prev) => prev.map((msg) => (msg.id === tempId ? response : msg)));
+        return new Promise((resolve, reject) => {
+            socketInstance.emit("sendMessage", payload, (response) => {
+                if (response?.id) {
+                    setMessages((prev) => [...prev, response]);
+                    resolve(response);
                 } else {
-                    // Gagal: Tandai error
-                    setMessages((prev) =>
-                        prev.map((msg) => (msg.id === tempId ? { ...msg, isError: true, isPending: false } : msg)),
-                    );
+                    reject(new Error("Failed to send message"));
                 }
             });
-        },
-        [currentUserId],
-    );
+        });
+    }, []);
 
-    // Function to mark a message as read
     const markMessageAsRead = useCallback((conversationId: string, recipientId: string) => {
         const socketInstance = socketRef.current;
-        if (!socketInstance || !socketInstance.connected) return;
+        if (!socketInstance?.connected) return;
 
         socketInstance.emit("markConversationAsRead", {
             conversationId,

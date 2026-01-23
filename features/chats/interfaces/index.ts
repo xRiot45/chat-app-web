@@ -1,18 +1,9 @@
-export type UserStatus = "ONLINE" | "OFFLINE";
+import { UserStatus } from "@/enums/user-status-enum";
+import { User } from "@/features/users/interfaces";
 
 export interface CreateMessage {
     recipientId: string;
     content: string;
-}
-
-export interface User {
-    id: string;
-    username: string;
-    fullName?: string;
-    avatarUrl?: string;
-    status?: UserStatus;
-    lastSeenAt?: string;
-    bio?: string;
 }
 
 export interface Message {

@@ -16,6 +16,7 @@ import ChatMainView from "@/features/chats/views/chat-main-view";
 import ContactListsView from "@/features/contacts/views/contact-lists-view";
 import SettingView from "@/features/settings/views/setting-view";
 import { cn } from "@/lib/utils";
+import { useThemeContext } from "@/providers/theme-provider";
 import { Bell, ChevronLeft, ChevronRight, Download, FileText, Heart, LogOut, Search, Send, X } from "lucide-react";
 import Image from "next/image";
 import React, { useEffect, useRef, useState } from "react";
@@ -26,7 +27,7 @@ interface ChatClientPageProps {
 }
 
 export default function HomeView({ token, currentUserId }: ChatClientPageProps) {
-    const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
+    const { isDarkMode } = useThemeContext();
     const [conversations, setConversations] = useState<ChatConversation[]>([]);
     const [selectedChat, setSelectedChat] = useState<ActiveChatSession | null>(null);
     const [mobileView, setMobileView] = useState<MobileViewType>("list");
@@ -104,7 +105,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
                                     ...chat,
                                     lastMessage: {
                                         ...chat.lastMessage,
-                                        isRead: true, 
+                                        isRead: true,
                                     },
                                 };
                             }
@@ -173,12 +174,6 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
             messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
         }
     }, [messages]);
-
-    // Toggle Dark Mode
-    useEffect(() => {
-        if (isDarkMode) document.documentElement.classList.add("dark");
-        else document.documentElement.classList.remove("dark");
-    }, [isDarkMode]);
 
     const handleSendMessage = (e?: React.FormEvent) => {
         e?.preventDefault();
@@ -333,12 +328,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
                 {/* Header */}
                 <div className="px-5 py-4 flex items-center justify-between shrink-0">
                     <User />
-                    <ButtonGrouping
-                        setIsAddModalOpen={setIsAddModalOpen}
-                        setIsDarkMode={setIsDarkMode}
-                        isDarkMode={isDarkMode}
-                        setIsSettingsOpen={setIsSettingsOpen}
-                    />
+                    <ButtonGrouping setIsAddModalOpen={setIsAddModalOpen} setIsSettingsOpen={setIsSettingsOpen} />
                 </div>
 
                 {/* Stories / Status Bar */}
