@@ -6,7 +6,6 @@ import User from "@/components/user";
 import { UserStatus } from "@/enums/user-status-enum";
 import { useChatManager } from "@/features/chats/hooks/use-chat-manager";
 import { ActiveChatSession, MobileViewType } from "@/features/chats/interfaces";
-import { ChatConversation } from "@/features/chats/interfaces/message-interface";
 import AllChatView from "@/features/chats/views/all-chat-view";
 import { ChatDirectoryView } from "@/features/chats/views/chat-directory-view";
 import ChatMainView from "@/features/chats/views/chat-main-view";
@@ -47,7 +46,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
         setInputText("");
     };
 
-    const handleChatSelect = (chat: ChatConversation) => {
+    const handleChatSelect = (chat: any) => {
         let targetRecipientId = chat.id;
         let targetName = chat.name;
         let targetAvatar = chat.avatar;
