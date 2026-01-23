@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { getSocket } from "@/lib/socket";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CreateMessage, Message } from "../interfaces";
+import { CreateMessage, Message } from "../interfaces/message-interface";
 import { TypedSocket } from "../interfaces/socket-interface";
 
 interface UseChatSocketProps {

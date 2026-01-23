@@ -1,5 +1,5 @@
 import { Socket } from "socket.io-client";
-import { CreateMessage, Message } from ".";
+import { CreateMessage, Message } from "./message-interface";
 
 export interface ServerToClientEvents {
     message: (message: Message) => void;

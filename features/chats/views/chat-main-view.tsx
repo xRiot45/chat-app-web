@@ -6,7 +6,8 @@ import ChatHeader from "../components/chat-header";
 import ChatInput from "../components/chat-input";
 import ChatMessageList from "../components/chat-message-list";
 import EmptyChatState from "../components/empty-chat-state";
-import { ActiveChatSession, Message, MobileViewType } from "../interfaces";
+import { ActiveChatSession, MobileViewType } from "../interfaces";
+import { Message } from "../interfaces/message-interface";
 
 interface ChatMainViewProps {
     currentUserId: string;

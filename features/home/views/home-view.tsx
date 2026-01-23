@@ -11,7 +11,8 @@ import { getMessagesQuery } from "@/features/chats/application/queries/get-messa
 import { getRecentMessagesQuery } from "@/features/chats/application/queries/get-recent-message-query";
 import { useChatSocket } from "@/features/chats/hooks/use-chat-socket";
 import { ActiveChatSession, MobileViewType } from "@/features/chats/interfaces";
-import AllChatView, { ChatConversation } from "@/features/chats/views/all-chat-view";
+import { ChatConversation } from "@/features/chats/interfaces/message-interface";
+import AllChatView from "@/features/chats/views/all-chat-view";
 import ChatMainView from "@/features/chats/views/chat-main-view";
 import ContactListsView from "@/features/contacts/views/contact-lists-view";
 import SettingView from "@/features/settings/views/setting-view";
