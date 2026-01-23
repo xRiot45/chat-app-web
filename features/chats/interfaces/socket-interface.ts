@@ -3,6 +3,7 @@ import { CreateMessage, Message } from "./message-interface";
 
 export interface ServerToClientEvents {
     message: (message: Message) => void;
+    messageRead: (data: { conversationId: string; readBy: string; lastReadMessageId: string }) => void;
     connect: () => void;
     disconnect: () => void;
 }

@@ -2,16 +2,13 @@
 
 import ButtonGrouping from "@/components/button-grouping";
 import SearchInput from "@/components/search-input";
-import { Avatar } from "@/components/ui/avatar";
 import User from "@/components/user";
-import { SHARED_MEDIA } from "@/constants/shared-media";
 import { UserStatus } from "@/enums/user-status-enum";
-import { getMessagesQuery } from "@/features/chats/application/queries/get-message-query";
-import { getRecentMessagesQuery } from "@/features/chats/application/queries/get-recent-message-query";
-import { useChatSocket } from "@/features/chats/hooks/use-chat-socket";
+import { useChatManager } from "@/features/chats/hooks/use-chat-manager";
 import { ActiveChatSession, MobileViewType } from "@/features/chats/interfaces";
 import { ChatConversation } from "@/features/chats/interfaces/message-interface";
 import AllChatView from "@/features/chats/views/all-chat-view";
+import { ChatDirectoryView } from "@/features/chats/views/chat-directory-view";
 import ChatMainView from "@/features/chats/views/chat-main-view";
 import { Contact } from "@/features/contacts/interfaces/contact";
 import ContactListsView from "@/features/contacts/views/contact-lists-view";
@@ -19,9 +16,8 @@ import SettingView from "@/features/settings/views/setting-view";
 import StoriesView from "@/features/stories/views/stories-view";
 import { cn } from "@/lib/utils";
 import { useThemeContext } from "@/providers/theme-provider";
-import { Bell, Download, FileText, Heart, LogOut, Search, X } from "lucide-react";
-import Image from "next/image";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
+import HomeBackground from "../components/home-background";
 
 interface ChatClientPageProps {
     token: string;
@@ -30,7 +26,7 @@ interface ChatClientPageProps {
 
 export default function HomeView({ token, currentUserId }: ChatClientPageProps) {
     const { isDarkMode } = useThemeContext();
-    const [conversations, setConversations] = useState<ChatConversation[]>([]);
+
     const [selectedChat, setSelectedChat] = useState<ActiveChatSession | null>(null);
     const [mobileView, setMobileView] = useState<MobileViewType>("list");
     const [showRightPanel, setShowRightPanel] = useState(true);
@@ -38,201 +34,16 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-    const messagesEndRef = useRef<HTMLDivElement>(null);
-
-    const { messages, sendMessage, setMessages, socket, markMessageAsRead } = useChatSocket({
+    const { conversations, messages, onSendMessage, messagesEndRef } = useChatManager({
         token,
         currentUserId,
-        activeRecipientId: selectedChat?.recipientId,
+        selectedChat,
     });
-
-    // --- 1. FETCH RECENT CONVERSATIONS (HTTP Initial Load) ---
-    useEffect(() => {
-        const fetchRecentMessages = async () => {
-            try {
-                const data = await getRecentMessagesQuery();
-                if (Array.isArray(data)) {
-                    setConversations(data);
-                } else {
-                    setConversations([]);
-                }
-            } catch (error) {
-                console.error("Failed to load recent messages:", error);
-                setConversations([]);
-            }
-        };
-        fetchRecentMessages();
-    }, []);
-
-    // --- 2. WEBSOCKET LISTENER (Real-time Sidebar Update) ---
-    useEffect(() => {
-        if (!socket) return;
-
-        const handleSidebarUpdate = (newMessage: any) => {
-            setConversations((prev) => {
-                const updatedList = [...prev];
-                const existingIndex = updatedList.findIndex((c) => c.id === newMessage.conversationId);
-
-                if (existingIndex !== -1) {
-                    const chatToUpdate = { ...updatedList[existingIndex] };
-
-                    chatToUpdate.lastMessage = {
-                        id: newMessage.id,
-                        content: newMessage.content,
-                        createdAt: newMessage.createdAt,
-                        senderId: newMessage.senderId,
-                        isRead: false,
-                    };
-
-                    if (newMessage.senderId !== currentUserId) {
-                        chatToUpdate.unreadCount = (chatToUpdate.unreadCount || 0) + 1;
-                    }
-
-                    updatedList.splice(existingIndex, 1);
-                    updatedList.unshift(chatToUpdate);
-                }
-
-                return updatedList;
-            });
-        };
-
-        const handleMessageRead = (data: { conversationId: string; readBy: string; lastReadMessageId: string }) => {
-            setConversations((prev) => {
-                return prev.map((chat) => {
-                    if (chat.id === data.conversationId) {
-                        if (data.readBy !== currentUserId) {
-                            if (chat.lastMessage && chat.lastMessage.senderId === currentUserId) {
-                                return {
-                                    ...chat,
-                                    lastMessage: {
-                                        ...chat.lastMessage,
-                                        isRead: true,
-                                    },
-                                };
-                            }
-                        }
-
-                        if (data.readBy === currentUserId) {
-                            return { ...chat, unreadCount: 0 };
-                        }
-                    }
-                    return chat;
-                });
-            });
-
-            setMessages((prevMessages) => {
-                if (data.readBy !== currentUserId) {
-                    return prevMessages.map((msg) => ({
-                        ...msg,
-                        isRead: true,
-                    }));
-                }
-                return prevMessages;
-            });
-        };
-
-        socket.on("message", handleSidebarUpdate);
-        socket.on("messageRead", handleMessageRead);
-
-        return () => {
-            socket.off("message", handleSidebarUpdate);
-            socket.off("messageRead", handleMessageRead);
-        };
-    }, [socket, currentUserId, setMessages]);
-
-    // --- 3. FETCH MESSAGES SAAT CHAT DIPILIH ---
-    useEffect(() => {
-        const loadMessages = async () => {
-            if (!selectedChat?.recipientId) return;
-
-            setMessages([]);
-
-            try {
-                const fetchedMessages = await getMessagesQuery(selectedChat.recipientId);
-                setMessages(fetchedMessages);
-            } catch (error) {
-                console.error("Failed to fetch messages:", error);
-            }
-            if (selectedChat.conversationId) {
-                markMessageAsRead(selectedChat.conversationId, selectedChat.recipientId);
-                setConversations((prev) => {
-                    return prev.map((chat) => {
-                        if (chat.id === selectedChat.conversationId) {
-                            return { ...chat, unreadCount: 0 };
-                        }
-                        return chat;
-                    });
-                });
-            }
-        };
-
-        loadMessages();
-    }, [selectedChat?.recipientId, selectedChat?.conversationId, setMessages, markMessageAsRead]);
-
-    // --- 4. Scroll to Bottom saat ada pesan baru di chat window ---
-    useEffect(() => {
-        if (messages.length > 0) {
-            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        }
-    }, [messages]);
 
     const handleSendMessage = (e?: React.FormEvent) => {
         e?.preventDefault();
-        if (!inputText.trim() || !selectedChat) return;
-
-        const content = inputText;
-        const timestamp = new Date();
-
-        sendMessage(content, selectedChat.recipientId);
-
-        setConversations((prev) => {
-            const updatedList = [...prev];
-            const chatIndex = updatedList.findIndex(
-                (c) =>
-                    c.id === selectedChat.conversationId ||
-                    c.recipient?.id === selectedChat.recipientId ||
-                    c.creator?.id === selectedChat.recipientId,
-            );
-
-            if (chatIndex !== -1) {
-                const activeChat = { ...updatedList[chatIndex] };
-                activeChat.lastMessage = {
-                    id: `temp-${Date.now()}`,
-                    content: content,
-                    createdAt: timestamp,
-                    senderId: currentUserId,
-                    isRead: false,
-                };
-
-                updatedList.splice(chatIndex, 1);
-                updatedList.unshift(activeChat);
-            } else {
-                const newConversationStub: any = {
-                    id: selectedChat.conversationId || `temp-conv-${Date.now()}`,
-                    creator: { id: currentUserId }, // Dummy creator
-                    recipient: {
-                        id: selectedChat.recipientId,
-                        fullName: selectedChat.name,
-                        avatarUrl: selectedChat.avatar,
-                        username: selectedChat.name,
-                    },
-                    lastMessage: {
-                        id: `temp-${Date.now()}`,
-                        content: content,
-                        createdAt: timestamp,
-                        senderId: currentUserId,
-                        isRead: false,
-                    },
-                    unreadCount: 0,
-                    type: "private",
-                };
-
-                updatedList.unshift(newConversationStub);
-            }
-
-            return updatedList;
-        });
-
+        if (!inputText.trim()) return;
+        onSendMessage(inputText);
         setInputText("");
     };
 
@@ -286,17 +97,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
         <div
             className={`h-screen w-screen overflow-hidden flex transition-colors duration-500 ${isDarkMode ? "dark bg-[#0a0a0c] text-slate-100" : "bg-slate-50 text-slate-900"} font-sans selection:bg-indigo-500/30`}
         >
-            {/* === BACKGROUND AMBIENCE (WEB3 STYLE) === */}
-            <div className="fixed inset-0 pointer-events-none z-0">
-                <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-violet-600/10 dark:bg-violet-900/20 rounded-full blur-[180px] animate-pulse-slow" />
-                <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-indigo-600/10 dark:bg-indigo-900/20 rounded-full blur-[180px] animate-pulse-slow delay-1000" />
-                <div
-                    className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]"
-                    style={{
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-                    }}
-                ></div>
-            </div>
+            <HomeBackground />
 
             {/* === LEFT SIDEBAR (CHAT LIST & NEW CHAT DRAWER) === */}
             <aside
@@ -354,129 +155,9 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
                 messagesEndRef={messagesEndRef}
             />
 
-            {/* === RIGHT SIDEBAR (DETAILS PANEL) === */}
+            {/* === RIGHT SIDEBAR (DETAILS OF CHAT) === */}
             {selectedChat && showRightPanel && (
-                <aside
-                    className={cn(
-                        "h-full z-50 flex flex-col transition-all duration-300 border-l border-slate-200 dark:border-white/5",
-                        "fixed inset-0 w-full bg-white/95 dark:bg-[#0f1115]/95 backdrop-blur-xl",
-                        "lg:relative lg:w-100 lg:bg-white/60 lg:dark:bg-[#0f1115]/80 lg:backdrop-blur-2xl",
-                    )}
-                >
-                    {/* Header Right */}
-                    <div className="h-19 flex items-center px-6 border-b border-slate-200/50 dark:border-white/5 font-bold text-lg shrink-0">
-                        <span className="text-slate-800 dark:text-white">Directory</span>
-                        <button
-                            onClick={() => setShowRightPanel(false)}
-                            className="ml-auto lg:hidden p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
-                        >
-                            <X className="w-6 h-6 text-slate-500 dark:text-slate-300" />
-                        </button>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
-                        {/* Profile Info */}
-                        <div className="flex flex-col items-center text-center">
-                            <div className="relative">
-                                <Avatar className="w-24 h-24 mb-4 ring-4 ring-slate-100 dark:ring-white/5 shadow-xl">
-                                    <Image
-                                        className="rounded-full"
-                                        width={96}
-                                        height={96}
-                                        src={selectedChat.avatar || "https://i.pravatar.cc/150"}
-                                        alt={selectedChat.name}
-                                    />
-                                </Avatar>
-                                {selectedChat.status === "ONLINE" && (
-                                    <span className="absolute bottom-5 right-1 w-4 h-4 bg-green-500 border-2 border-white dark:border-[#0f1115] rounded-full"></span>
-                                )}
-                            </div>
-
-                            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">
-                                {selectedChat.name}
-                            </h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
-                                @{selectedChat.name.toLowerCase().replace(/\s/g, "")}
-                            </p>
-                            <p className="mt-4 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                                Building the future of web development with strict deadlines. 🚀
-                            </p>
-
-                            <div className="flex gap-4 mt-6 w-full">
-                                <button className="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors flex flex-col items-center gap-1 text-xs font-medium text-slate-700 dark:text-slate-300">
-                                    <Bell className="w-5 h-5 mb-1" />
-                                    Mute
-                                </button>
-                                <button className="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors flex flex-col items-center gap-1 text-xs font-medium text-slate-700 dark:text-slate-300">
-                                    <Search className="w-5 h-5 mb-1" />
-                                    Search
-                                </button>
-                                <button className="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors flex flex-col items-center gap-1 text-xs font-medium text-slate-700 dark:text-slate-300">
-                                    <Heart className="w-5 h-5 mb-1" />
-                                    Fav
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Shared Media */}
-                        <div>
-                            <div className="flex items-center justify-between mb-4">
-                                <h4 className="font-bold text-sm text-slate-400 uppercase tracking-wider">
-                                    Shared Media
-                                </h4>
-                                <button className="text-indigo-500 text-xs hover:underline">View All</button>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2">
-                                {SHARED_MEDIA.filter((m) => m.type === "image").map((media) => (
-                                    <div
-                                        key={media.id}
-                                        className="aspect-square rounded-lg overflow-hidden relative group cursor-pointer bg-slate-100 dark:bg-white/5"
-                                    >
-                                        <Image
-                                            height={200}
-                                            width={200}
-                                            src={media.src || ""}
-                                            className="w-full h-full object-cover transition-transform group-hover:scale-110"
-                                            alt="media"
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Shared Files */}
-                        <div>
-                            <div className="flex items-center justify-between mb-4">
-                                <h4 className="font-bold text-sm text-slate-400 uppercase tracking-wider">Documents</h4>
-                            </div>
-                            <div className="space-y-3">
-                                {SHARED_MEDIA.filter((m) => m.type === "file").map((file) => (
-                                    <div
-                                        key={file.id}
-                                        className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer transition-colors group"
-                                    >
-                                        <div className="p-2 bg-indigo-100 dark:bg-indigo-500/20 rounded-lg text-indigo-600 dark:text-indigo-300">
-                                            <FileText className="w-5 h-5" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium truncate text-slate-800 dark:text-slate-200">
-                                                {file.name}
-                                            </p>
-                                            <p className="text-[10px] text-slate-500">{file.size} • PDF</p>
-                                        </div>
-                                        <Download className="w-4 h-4 text-slate-400 group-hover:text-indigo-500" />
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="pt-4 border-t border-slate-200 dark:border-white/10 pb-6">
-                            <button className="w-full py-3 rounded-xl flex items-center justify-center gap-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-medium">
-                                <LogOut className="w-4 h-4" /> Block User
-                            </button>
-                        </div>
-                    </div>
-                </aside>
+                <ChatDirectoryView selectedChat={selectedChat} onClose={() => setShowRightPanel(false)} />
             )}
         </div>
     );
