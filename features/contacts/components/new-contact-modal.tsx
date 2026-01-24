@@ -14,16 +14,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { searchUsersAction } from "@/features/users/actions/search-user-action";
 import { UserSearchResponse } from "@/features/users/types";
+import { ActionState, initialActionState } from "@/types/action-state";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, CheckCircle2, Loader2, Pencil, UserPlus, XCircle } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
-import { createContactAction } from "../actions/create-contact-action";
-import { updateContactAction } from "../actions/update-contact-action";
+import { createContactAction } from "../applications/actions/create-contact-action";
+import { updateContactAction } from "../applications/actions/update-contact-action";
 import { Contact } from "../interfaces/contact";
-import { ActionState } from "../types";
 
 const formSchema = z.object({
     alias: z.string().max(50, "Alias too long").optional(),
@@ -36,12 +36,6 @@ interface NewContactModalProps {
 }
 
 type SearchStatus = "idle" | "searching" | "found" | "not-found" | "error";
-
-const initialState: ActionState = {
-    status: "idle",
-    message: "",
-    errors: undefined,
-};
 
 export function NewContactModal({ isOpen, onClose, selectedContact }: NewContactModalProps) {
     const isEditMode = !!selectedContact;
@@ -57,7 +51,7 @@ export function NewContactModal({ isOpen, onClose, selectedContact }: NewContact
         }
     };
 
-    const [state, formAction, isPending] = useActionState(actionDispatcher, initialState);
+    const [state, formAction, isPending] = useActionState(actionDispatcher, initialActionState);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),

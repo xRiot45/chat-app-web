@@ -9,13 +9,14 @@ import { ActiveChatSession, MobileViewType } from "@/features/chats/interfaces";
 import AllChatView from "@/features/chats/views/all-chat-view";
 import { ChatDirectoryView } from "@/features/chats/views/chat-directory-view";
 import ChatMainView from "@/features/chats/views/chat-main-view";
+import { getContacts } from "@/features/contacts/applications/queries/get-contact-query";
 import { Contact } from "@/features/contacts/interfaces/contact";
 import ContactListsView from "@/features/contacts/views/contact-lists-view";
 import SettingView from "@/features/settings/views/setting-view";
 import StoriesView from "@/features/stories/views/stories-view";
 import { cn } from "@/lib/utils";
 import { useThemeContext } from "@/providers/theme-provider";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import HomeBackground from "../components/home-background";
 
 interface ChatClientPageProps {
@@ -32,12 +33,19 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
     const [inputText, setInputText] = useState("");
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [contacts, setContacts] = useState<Contact[]>([]);
 
     const { conversations, messages, onSendMessage, messagesEndRef } = useChatManager({
         token,
         currentUserId,
         selectedChat,
     });
+
+    useEffect(() => {
+        getContacts().then((res) => {
+            setContacts(res.data ?? []);
+        });
+    }, []);
 
     const handleSendMessage = (e?: React.FormEvent) => {
         e?.preventDefault();
@@ -122,6 +130,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
                     <AllChatView
                         data={conversations}
                         currentUserId={currentUserId}
+                        contacts={contacts}
                         handleChatSelect={handleChatSelect}
                         selectedChat={selectedChat}
                     />

@@ -9,12 +9,11 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { initialActionState } from "@/types/action-state";
 import { ArrowLeft, Loader2, MoreVertical, Pencil, RefreshCw, Send, Trash, UserPlus, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { deleteContactAction } from "../actions/delete-contact-action";
-import { findAllContactAction } from "../actions/find-all-contact-action";
+import { deleteContactAction } from "../applications/actions/delete-contact-action";
+import { getContacts } from "../applications/queries/get-contact-query";
 import { DeleteContactAlert } from "../components/delete-contact-alert";
 import { NewContactModal } from "../components/new-contact-modal";
 import { NewGroupModal } from "../components/new-group-modal";
@@ -45,20 +44,12 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen, on
 
     const fetchContacts = useCallback(async () => {
         setIsLoading(true);
-        try {
-            const formData = new FormData();
-            const result = await findAllContactAction(initialActionState, formData);
-            if (result.status === "success" && Array.isArray(result.data)) {
-                setContacts(result.data as Contact[]);
-            } else {
-                toast.error("Gagal", { description: result.message || "Gagal memuat kontak" });
+        await getContacts().then((res) => {
+            if (res.data) {
+                setContacts(res.data);
             }
-        } catch (error) {
-            console.error(error);
-            toast.error("Error", { description: "Terjadi kesalahan jaringan." });
-        } finally {
             setIsLoading(false);
-        }
+        });
     }, []);
 
     const handleCloseContactModal = useCallback(

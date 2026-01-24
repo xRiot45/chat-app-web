@@ -6,19 +6,19 @@ import { ActionState } from "@/types/action-state";
 import { ApiResponse } from "@/types/api-response";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { Contact } from "../interfaces/contact";
-import { createContactSchema } from "../schemas/create-contact-schema";
+import { Contact } from "../../interfaces/contact";
+import { updateContactSchema } from "../../schemas/update-contact-schema";
 
-export async function createContactAction(prevState: ActionState, formData: FormData): Promise<ActionState> {
-    const validatedFields = createContactSchema.safeParse({
-        contactUserId: formData.get("contactUserId"),
+export async function updateContactAction(prevState: ActionState, formData: FormData): Promise<ActionState> {
+    const validatedFields = updateContactSchema.safeParse({
+        id: formData.get("id"),
         alias: formData.get("alias"),
     });
 
     if (!validatedFields.success) {
         return {
             status: "error",
-            message: "Validation failed. Please check your input fields.",
+            message: "Validation failed. Please check your input.",
             errors: validatedFields.error.flatten().fieldErrors,
         };
     }
@@ -29,35 +29,35 @@ export async function createContactAction(prevState: ActionState, formData: Form
     if (!token) {
         return {
             status: "error",
-            message: "Authentication failed. Please log in again.",
+            message: "Unauthorized. Please log in again.",
         };
     }
 
     try {
-        const payload = validatedFields.data;
-        const authHeaders = await getAuthHeaders();
+        const { id, alias } = validatedFields.data;
+        const headers = await getAuthHeaders();
 
-        const response = await fetch(`${API_BASE_URL}/api/contacts`, {
-            method: "POST",
-            headers: authHeaders,
-            body: JSON.stringify(payload),
+        const response = await fetch(`${API_BASE_URL}/api/contacts/${id}`, {
+            method: "PUT",
+            headers: headers,
+            body: JSON.stringify({ alias }),
         });
 
-        const responseData = (await response.json()) as ApiResponse<Contact[]>;
+        const responseData = (await response.json()) as ApiResponse<Contact>;
         if (!response.ok) {
             return {
                 status: "error",
-                message: responseData.message || "Server refused the request.",
+                message: responseData.message || "Failed to update contact on server.",
             };
         }
 
         revalidatePath("/");
         return {
             status: "success",
-            message: "Contact has been added successfully.",
+            message: "Contact name updated successfully.",
         };
     } catch (error) {
-        console.error("[CreateContactAction] Error:", error);
+        console.error("[UpdateContactAction] System Error:", error);
         return {
             status: "error",
             message: "A system error occurred. Please try again later.",
