@@ -5,9 +5,11 @@ import { UserStatus } from "@/enums/user-status-enum";
 import { getCurrentUser } from "@/features/auth/application/queries/get-current-user-query";
 import { User } from "@/features/users/interfaces";
 import { useEffect, useState } from "react";
+import EditProfileModal from "./edit-profile-modal";
 
 export default function ProfileSection() {
     const [user, setUser] = useState<User | null>(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     useEffect(() => {
         getCurrentUser().then((response) => {
@@ -33,7 +35,6 @@ export default function ProfileSection() {
                             {user?.fullName?.charAt(0).toUpperCase() || "?"}
                         </AvatarFallback>
                     </Avatar>
-                    {/* Status Indicator (Online/Offline) */}
                     {user?.status === UserStatus.ONLINE && (
                         <div className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 border-2 border-white dark:border-[#0f1115] rounded-full shadow-sm" />
                     )}
@@ -47,7 +48,12 @@ export default function ProfileSection() {
                         @{user?.username || "username"}
                     </p>
                     <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 italic">{user?.email}</p>
-                    <button className="text-xs font-semibold text-indigo-500 mt-2 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer">
+
+                    {/* 2. Tambahkan onClick untuk membuka modal */}
+                    <button
+                        onClick={() => setIsEditModalOpen(true)}
+                        className="text-xs font-semibold text-indigo-500 mt-2 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+                    >
                         Edit Profile
                     </button>
                 </div>
@@ -60,6 +66,9 @@ export default function ProfileSection() {
                     </p>
                 </div>
             )}
+
+            {/* 3. Panggil Modal di sini */}
+            <EditProfileModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} user={user} />
         </div>
     );
 }
