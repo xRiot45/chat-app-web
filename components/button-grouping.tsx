@@ -9,7 +9,6 @@ interface ButtonGroupingProps {
 }
 
 export default function ButtonGrouping({ setIsAddModalOpen, setIsSettingsOpen }: ButtonGroupingProps) {
-    // Ambil state dan fungsi toggle langsung dari Context
     const { isDarkMode, toggleTheme, mounted } = useThemeContext();
 
     return (

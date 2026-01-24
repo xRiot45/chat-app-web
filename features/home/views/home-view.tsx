@@ -1,8 +1,8 @@
 "use client";
 
+import Application from "@/components/application";
 import ButtonGrouping from "@/components/button-grouping";
 import SearchInput from "@/components/search-input";
-import User from "@/components/user";
 import { UserStatus } from "@/enums/user-status-enum";
 import { useChatManager } from "@/features/chats/hooks/use-chat-manager";
 import { ActiveChatSession, MobileViewType } from "@/features/chats/interfaces";
@@ -107,7 +107,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
             >
                 {/* Header */}
                 <div className="px-5 py-4 flex items-center justify-between shrink-0">
-                    <User />
+                    <Application />
                     <ButtonGrouping setIsAddModalOpen={setIsAddModalOpen} setIsSettingsOpen={setIsSettingsOpen} />
                 </div>
 
