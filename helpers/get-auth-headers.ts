@@ -2,12 +2,17 @@
 
 import { cookies } from "next/headers";
 
-export async function getAuthHeaders() {
+export async function getAuthHeaders(isMultipart = false) {
     const cookieStore = await cookies();
     const token = cookieStore.get("accessToken")?.value;
 
-    return {
-        "Content-Type": "application/json",
+    const headers: Record<string, string> = {
         Authorization: `Bearer ${token || ""}`,
     };
+
+    if (!isMultipart) {
+        headers["Content-Type"] = "application/json";
+    }
+
+    return headers;
 }
