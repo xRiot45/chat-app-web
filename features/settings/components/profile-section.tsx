@@ -1,6 +1,7 @@
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { API_BASE_URL } from "@/configs/api-base-url";
 import { UserStatus } from "@/enums/user-status-enum";
 import { getCurrentUser } from "@/features/auth/application/queries/get-current-user-query";
 import { User } from "@/features/users/interfaces";
@@ -25,13 +26,14 @@ export default function ProfileSection() {
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
             <div className="flex items-start gap-4 p-4 rounded-2xl pb-6">
                 <div className="relative group">
-                    <Avatar className="w-17.5 h-17.5 border-2 border-indigo-500/20 dark:border-indigo-500/40">
+                    <Avatar className="w-18 h-18 border-2 ">
                         <AvatarImage
-                            src={user?.avatarUrl || ""}
+                            src={`${API_BASE_URL}/api/public${user?.avatarUrl}` || ""}
                             alt={user?.fullName || "User"}
                             className="object-cover"
+                            crossOrigin="anonymous"
                         />
-                        <AvatarFallback className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-2xl font-bold">
+                        <AvatarFallback className="...">
                             {user?.fullName?.charAt(0).toUpperCase() || "?"}
                         </AvatarFallback>
                     </Avatar>
