@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+
 "use client";
 
 import { AspectRatio } from "@/components/ui/aspect-ratio";
@@ -8,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { CloudUpload, Send, X } from "lucide-react";
 import Image from "next/image";
-import React, { ChangeEvent, useRef, useState } from "react";
+import React, { ChangeEvent, useEffect, useRef, useState } from "react";
 
 interface CreateStoryModalProps {
     isOpen: boolean;
@@ -32,12 +34,17 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
         const selectedFile = e.target.files?.[0];
         if (selectedFile) {
             setFile(selectedFile);
-            setPreviewUrl(URL.createObjectURL(selectedFile));
+            const url = URL.createObjectURL(selectedFile);
+            setPreviewUrl(url);
+
+            // Cleanup memory URL saat component unmount
+            return () => URL.revokeObjectURL(url);
         }
     };
 
     const handleRemoveFile = () => {
         setFile(null);
+        if (previewUrl) URL.revokeObjectURL(previewUrl); // Penting untuk memory management
         setPreviewUrl(null);
         setCaption("");
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -53,6 +60,12 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
 
     const isVideo = file?.type.startsWith("video");
 
+    useEffect(() => {
+        if (!isOpen) {
+            handleRemoveFile();
+        }
+    }, [isOpen]);
+
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="sm:max-w-lg p-0 overflow-hidden border-none bg-white/90 dark:bg-slate-950/90 backdrop-blur-2xl shadow-2xl ring-1 ring-black/5">
@@ -61,7 +74,6 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
                 </DialogHeader>
 
                 <div className="px-6 pb-6 space-y-4">
-                    {/* Compact Preview Area */}
                     <div className="relative">
                         <div
                             onClick={() => !previewUrl && fileInputRef.current?.click()}
@@ -87,15 +99,15 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
                                             />
                                         ) : (
                                             <Image
-                                                height={100}
-                                                width={100}
+                                                fill // Gunakan fill untuk AspectRatio agar lebih rapi
                                                 src={previewUrl}
                                                 alt="Preview"
-                                                className="w-full h-full object-cover"
+                                                className="object-cover"
                                             />
                                         )}
                                         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                             <Button
+                                                type="button"
                                                 variant="destructive"
                                                 size="icon"
                                                 className="h-8 w-8 rounded-full shadow-xl"
@@ -127,7 +139,6 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
                         />
                     </div>
 
-                    {/* Caption Input */}
                     <div className="space-y-1.5">
                         <Label htmlFor="caption" className="text-[11px] uppercase tracking-wider text-slate-500 ml-1">
                             Caption

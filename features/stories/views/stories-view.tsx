@@ -1,14 +1,29 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { STORIES } from "@/constants/stories";
-import { useState } from "react";
-import { CreateStoryModal } from "../components/create-story-modal"; // Path sesuai folder
+import { initialActionState } from "@/types/action-state";
+import { useActionState, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { createStoryAction } from "../application/actions/create-story-action";
+import { CreateStoryModal } from "../components/create-story-modal";
 import { StoryViewerModal } from "../components/story-viewer-modal";
 
 export default function StoriesView() {
     const [activeStoryIndex, setActiveStoryIndex] = useState<number | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+    const [state, formAction, isPending] = useActionState(createStoryAction, initialActionState);
+
+    useEffect(() => {
+        if (state.status === "success") {
+            toast.success(state.message);
+            setIsCreateModalOpen(false);
+        } else if (state.status === "error") {
+            toast.error(state.message);
+        }
+    }, [state]);
 
     const handleOpenStory = (index: number) => {
         setActiveStoryIndex(index);
@@ -16,12 +31,6 @@ export default function StoriesView() {
 
     const handleCloseStory = () => {
         setActiveStoryIndex(null);
-    };
-
-    const handleCreateStory = (formData: FormData) => {
-        // Logik API Create Story kamu di sini
-        console.log("Uploading story data...", formData);
-        // Toast atau Notification sukses bisa ditambahkan di sini
     };
 
     return (
@@ -73,7 +82,8 @@ export default function StoriesView() {
             <CreateStoryModal
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
-                onSubmit={handleCreateStory}
+                onSubmit={formAction}
+                isUploading={isPending}
             />
         </section>
     );
