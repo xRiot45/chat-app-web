@@ -2,7 +2,7 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Heart, Send, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { createPortal } from "react-dom";
@@ -87,23 +87,6 @@ export const StoryViewerModal = ({ stories, initialIndex, onClose }: StoryViewer
                     {/* Invisible Click Targets for Mobile navigation */}
                     <div className="absolute inset-y-0 left-0 w-1/4 z-20 cursor-pointer" onClick={handlePrev} />
                     <div className="absolute inset-y-0 right-0 w-1/4 z-20 cursor-pointer" onClick={handleNext} />
-                </div>
-
-                {/* 4. Footer Interaction */}
-                <div className="p-4 z-40 bg-linear-to-t from-black/80 to-transparent pb-8 md:pb-6">
-                    <div className="flex items-center gap-3">
-                        <input
-                            type="text"
-                            placeholder="Reply to story..."
-                            className="flex-1 bg-white/10 border border-white/20 rounded-full py-2.5 px-5 text-white placeholder:text-white/50 focus:border-white/50 outline-none backdrop-blur-md text-sm transition-all"
-                        />
-                        <button className="p-2.5 rounded-full border border-white/20 text-white hover:bg-white/10 backdrop-blur-md transition-colors">
-                            <Heart className="w-5 h-5" />
-                        </button>
-                        <button className="p-2.5 rounded-full border border-white/20 text-white hover:bg-white/10 backdrop-blur-md transition-colors">
-                            <Send className="w-5 h-5" />
-                        </button>
-                    </div>
                 </div>
             </div>
 
