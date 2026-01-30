@@ -1,4 +1,4 @@
-interface StoryUser {
+interface UserShort {
     id: string;
     username: string;
     fullName: string;
@@ -13,6 +13,10 @@ export interface Story {
     expiresAt: string;
     createdAt: string;
     updatedAt: string;
-    user: StoryUser;
+    user: UserShort;
 }
 
+export interface StoryViewer {
+    seenAt: string;
+    user: UserShort;
+}
