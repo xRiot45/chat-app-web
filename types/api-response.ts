@@ -1,5 +1,5 @@
 export type ApiResponse<T = unknown> = {
-    status: boolean;
+    success: boolean;
     statusCode: number;
     timestamp: Date;
     message: string;
@@ -7,7 +7,7 @@ export type ApiResponse<T = unknown> = {
 };
 
 export type ApiErrorResponse = {
-    status: boolean;
+    success: boolean;
     statusCode: number;
     error: string;
     message: string;

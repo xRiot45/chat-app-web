@@ -1,13 +1,18 @@
-export interface Story {
+interface StoryUser {
     id: string;
-    name: string;
-    img: string;
-    time: string;
-    isViewed?: boolean;
+    username: string;
+    fullName: string;
+    avatarUrl: string;
 }
 
-export interface StoryViewerProps {
-    stories: Story[];
-    initialIndex: number;
-    onClose: () => void;
+export interface Story {
+    id: string;
+    imageUrl: string;
+    videoUrl: string | null;
+    caption: string;
+    expiresAt: string;
+    createdAt: string;
+    updatedAt: string;
+    user: StoryUser;
 }
+

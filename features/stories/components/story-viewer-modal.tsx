@@ -1,18 +1,40 @@
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { API_BASE_URL } from "@/configs/api-base-url";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { StoryViewerProps } from "../interfaces/story";
+import { Story } from "../interfaces/story";
+
+export interface StoryViewerProps {
+    stories: Story[];
+    initialIndex: number;
+    onClose: () => void;
+}
 
 export const StoryViewerModal = ({ stories, initialIndex, onClose }: StoryViewerProps) => {
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const currentStory = stories[currentIndex];
 
-    // Handlers
+    const getFullUrl = (path: string | null) => {
+        if (!path) return null;
+        const baseUrl = API_BASE_URL.endsWith("/") ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+        const cleanPath = path.startsWith("/") ? path : `/${path}`;
+        return `${baseUrl}/api/public${cleanPath}`;
+    };
+
+    const imageUrl = getFullUrl(currentStory.imageUrl);
+    const videoUrl = getFullUrl(currentStory.videoUrl);
+    const avatarUrl = getFullUrl(currentStory.user.avatarUrl);
+
+    const formatTime = (dateString: string) => {
+        const date = new Date(dateString);
+        return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    };
+
     const handleNext = (e?: React.MouseEvent) => {
         e?.stopPropagation();
         if (currentIndex < stories.length - 1) {
@@ -32,10 +54,12 @@ export const StoryViewerModal = ({ stories, initialIndex, onClose }: StoryViewer
     const modalContent = (
         <div className="fixed inset-0 z-60 bg-black flex items-center justify-center animate-in fade-in duration-300">
             {/* Background Blur Dynamic */}
-            <div
-                className="absolute inset-0 opacity-40 bg-center bg-cover blur-3xl scale-110 transition-all duration-500"
-                style={{ backgroundImage: `url(${currentStory.img})` }}
-            />
+            {imageUrl && (
+                <div
+                    className="absolute inset-0 opacity-40 bg-center bg-cover blur-3xl scale-110 transition-all duration-500"
+                    style={{ backgroundImage: `url(${imageUrl})` }}
+                />
+            )}
 
             {/* Main Container */}
             <div className="relative w-full h-full md:max-w-md md:h-[90vh] bg-black md:rounded-3xl overflow-hidden flex flex-col shadow-2xl border border-white/10 z-10">
@@ -47,7 +71,6 @@ export const StoryViewerModal = ({ stories, initialIndex, onClose }: StoryViewer
                                 className={cn(
                                     "h-full bg-white transition-all duration-300",
                                     idx < currentIndex ? "w-full" : idx === currentIndex ? "w-full" : "w-0",
-                                    // Note: w-full pada currentIndex biasanya dikontrol via timer CSS/JS
                                 )}
                             />
                         </div>
@@ -58,12 +81,18 @@ export const StoryViewerModal = ({ stories, initialIndex, onClose }: StoryViewer
                 <div className="absolute top-4 left-0 right-0 p-4 z-40 flex items-center justify-between pt-6">
                     <div className="flex items-center gap-3">
                         <Avatar className="w-10 h-10 border border-white/20">
-                            <AvatarImage src={currentStory.img} alt={currentStory.name} />
-                            <AvatarFallback>{currentStory.name.charAt(0)}</AvatarFallback>
+                            <AvatarImage
+                                src={avatarUrl || ""}
+                                alt={currentStory.user.fullName}
+                                crossOrigin="anonymous" // Penting untuk masalah CORS
+                            />
+                            <AvatarFallback className="bg-slate-700 text-white">
+                                {currentStory.user.fullName.charAt(0)}
+                            </AvatarFallback>
                         </Avatar>
                         <div>
-                            <p className="text-white font-bold text-sm drop-shadow-md">{currentStory.name}</p>
-                            <p className="text-white/70 text-xs drop-shadow-md">{currentStory.time}</p>
+                            <p className="text-white font-bold text-sm drop-shadow-md">{currentStory.user.fullName}</p>
+                            <p className="text-white/70 text-xs drop-shadow-md">{formatTime(currentStory.createdAt)}</p>
                         </div>
                     </div>
                     <button
@@ -75,22 +104,53 @@ export const StoryViewerModal = ({ stories, initialIndex, onClose }: StoryViewer
                 </div>
 
                 {/* 3. Main Content Area */}
-                <div className="flex-1 relative flex items-center justify-center bg-black">
-                    <Image
-                        fill
-                        src={currentStory.img}
-                        className="w-full h-auto max-h-full object-contain"
-                        alt="Story Content"
-                        priority
+                <div className="flex-1 relative flex items-center justify-center bg-black overflow-hidden">
+                    {videoUrl ? (
+                        <video
+                            src={videoUrl}
+                            className="w-full h-auto max-h-full object-contain"
+                            autoPlay
+                            muted
+                            playsInline
+                            crossOrigin="anonymous"
+                        />
+                    ) : (
+                        /* Menggunakan tag img standar untuk menghindari masalah hostname next.config.js & COEP */
+                        <Image
+                            fill
+                            src={imageUrl || ""}
+                            className="w-full h-auto max-h-full object-contain pointer-events-none select-none"
+                            alt={currentStory.caption || "Story Content"}
+                            crossOrigin="anonymous"
+                            priority
+                            unoptimized
+                        />
+                    )}
+
+                    {/* Invisible Click Targets for Navigation */}
+                    <div
+                        className="absolute inset-y-0 left-0 w-1/3 z-20 cursor-pointer"
+                        onClick={handlePrev}
+                        title="Previous"
+                    />
+                    <div
+                        className="absolute inset-y-0 right-0 w-1/3 z-20 cursor-pointer"
+                        onClick={handleNext}
+                        title="Next"
                     />
 
-                    {/* Invisible Click Targets for Mobile navigation */}
-                    <div className="absolute inset-y-0 left-0 w-1/4 z-20 cursor-pointer" onClick={handlePrev} />
-                    <div className="absolute inset-y-0 right-0 w-1/4 z-20 cursor-pointer" onClick={handleNext} />
+                    {/* Caption Overlay */}
+                    {currentStory.caption && (
+                        <div className="absolute bottom-10 left-0 right-0 p-6 text-center z-30">
+                            <p className="text-white text-sm drop-shadow-lg bg-black/40 backdrop-blur-md py-2 px-4 rounded-lg inline-block max-w-[80%]">
+                                {currentStory.caption}
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* 5. Desktop Navigation Controls */}
+            {/* 4. Desktop Navigation Controls */}
             <button
                 onClick={handlePrev}
                 className={cn(
