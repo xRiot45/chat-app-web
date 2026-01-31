@@ -92,10 +92,9 @@ export const MyStoryViewerModal = ({ stories, initialIndex, onClose, onStoryDele
         try {
             const result = await deleteStoryAction(currentStory.id);
             if (result.status === "success") {
-                toast?.success("Story deleted"); 
+                toast?.success("Story deleted");
 
                 const deletedId = currentStory.id;
-
 
                 onStoryDeleted?.(deletedId);
                 const updatedStories = localStories.filter((s) => s.id !== deletedId);
@@ -154,9 +153,7 @@ export const MyStoryViewerModal = ({ stories, initialIndex, onClose, onStoryDele
                     <div className="flex items-center gap-3">
                         <Avatar className="w-10 h-10 border border-white/10 ring-1 ring-black/20">
                             <AvatarImage src={avatarUrl} crossOrigin="anonymous" className="object-cover" />
-                            <AvatarFallback className="bg-slate-800 text-xs">
-                                {currentStory.user.fullName[0]}
-                            </AvatarFallback>
+                            <AvatarFallback className="bg-slate-800 text-xs">My Story</AvatarFallback>
                         </Avatar>
                         <div className="drop-shadow-lg">
                             <p className="text-white font-bold text-sm tracking-tight">{currentStory.user.fullName}</p>
