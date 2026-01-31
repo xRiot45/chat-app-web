@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { createStoryAction } from "../application/actions/create-story-action";
 import { showAllMyStories } from "../application/queries/show-all-my-stories-query";
 import { CreateStoryModal } from "../components/create-story-modal";
-import { StoryViewerModal } from "../components/story-viewer-modal";
+import { MyStoryViewerModal } from "../components/my-story-viewer-modal";
 import { Story } from "../interfaces/story";
 
 export default function StoriesView() {
@@ -113,7 +113,7 @@ export default function StoriesView() {
 
             {/* --- Modal Viewer --- */}
             {activeStoryIndex !== null && stories.length > 0 && (
-                <StoryViewerModal stories={stories} initialIndex={activeStoryIndex} onClose={handleCloseStory} />
+                <MyStoryViewerModal stories={stories} initialIndex={activeStoryIndex} onClose={handleCloseStory} />
             )}
 
             {/* --- Modal Create Story --- */}

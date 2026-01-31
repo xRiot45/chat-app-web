@@ -26,7 +26,7 @@ export interface StoryViewerProps {
     onDeleteStory?: (storyId: string) => void;
 }
 
-export const StoryViewerModal = ({ stories, initialIndex, onClose, onDeleteStory }: StoryViewerProps) => {
+export const MyStoryViewerModal = ({ stories, initialIndex, onClose, onDeleteStory }: StoryViewerProps) => {
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [viewers, setViewers] = useState<StoryViewer[]>([]);
     const [isLoadingViewers, setIsLoadingViewers] = useState(false);
@@ -189,7 +189,7 @@ export const StoryViewerModal = ({ stories, initialIndex, onClose, onDeleteStory
                         <SheetContent
                             side="bottom"
                             className={cn(
-                                "h-[60vh] flex flex-col rounded-t-[32px] bg-[#0f1115]/95 backdrop-blur-3xl border-white/10 text-white z-100 px-0 pb-0",
+                                "h-[55vh]! flex flex-col rounded-t-[32px] bg-[#0f1115]/95 backdrop-blur-3xl border-white/10 text-white z-100 px-0 pb-0",
                                 "mx-auto w-full md:max-w-md border-t shadow-2xl overflow-hidden outline-none",
                             )}
                             onClick={(e) => e.stopPropagation()}
