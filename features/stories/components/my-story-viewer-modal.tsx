@@ -3,7 +3,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { API_BASE_URL } from "@/configs/api-base-url";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Eye, MoreVertical, Trash2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, Loader2, MoreVertical, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -17,23 +17,26 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { toast } from "sonner";
+import { deleteStoryAction } from "../application/actions/delete-story-action";
 import { getStoryViewers } from "../application/queries/get-story-viewers-query";
 
 export interface StoryViewerProps {
     stories: Story[];
     initialIndex: number;
     onClose: () => void;
-    onDeleteStory?: (storyId: string) => void;
+    onStoryDeleted?: (storyId: string) => void;
 }
 
-export const MyStoryViewerModal = ({ stories, initialIndex, onClose, onDeleteStory }: StoryViewerProps) => {
+export const MyStoryViewerModal = ({ stories, initialIndex, onClose, onStoryDeleted }: StoryViewerProps) => {
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [viewers, setViewers] = useState<StoryViewer[]>([]);
     const [isLoadingViewers, setIsLoadingViewers] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
-    const currentStory = stories[currentIndex];
+    const [localStories, setLocalStories] = useState(stories);
+    const currentStory = localStories[currentIndex];
 
-    // Helper URL Formatting
     const getFullUrl = (path: string | null) => {
         if (!path) return "";
         const baseUrl = API_BASE_URL.endsWith("/") ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
@@ -41,12 +44,13 @@ export const MyStoryViewerModal = ({ stories, initialIndex, onClose, onDeleteSto
         return `${baseUrl}/api/public${cleanPath}`;
     };
 
-    const imageUrl = getFullUrl(currentStory.imageUrl);
-    const videoUrl = getFullUrl(currentStory.videoUrl);
-    const avatarUrl = getFullUrl(currentStory.user.avatarUrl);
+    const imageUrl = currentStory ? getFullUrl(currentStory.imageUrl) : "";
+    const videoUrl = currentStory ? getFullUrl(currentStory.videoUrl) : "";
+    const avatarUrl = currentStory ? getFullUrl(currentStory.user.avatarUrl) : "";
 
-    // Fetch Viewers saat story berpindah
     useEffect(() => {
+        if (!currentStory) return;
+
         const fetchViewers = async () => {
             setIsLoadingViewers(true);
             try {
@@ -60,16 +64,11 @@ export const MyStoryViewerModal = ({ stories, initialIndex, onClose, onDeleteSto
         };
 
         fetchViewers();
-    }, [currentIndex, currentStory.id]);
-
-    const formatTime = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    };
+    }, [currentIndex, currentStory, currentStory.id]);
 
     const handleNext = (e?: React.MouseEvent) => {
         e?.stopPropagation();
-        if (currentIndex < stories.length - 1) {
+        if (currentIndex < localStories.length - 1) {
             setCurrentIndex((prev) => prev + 1);
         } else {
             onClose();
@@ -83,9 +82,51 @@ export const MyStoryViewerModal = ({ stories, initialIndex, onClose, onDeleteSto
         }
     };
 
+    const handleDelete = async () => {
+        if (!currentStory) return;
+
+        const confirmDelete = confirm("Are you sure you want to delete this story?");
+        if (!confirmDelete) return;
+
+        setIsDeleting(true);
+        try {
+            const result = await deleteStoryAction(currentStory.id);
+            if (result.status === "success") {
+                toast?.success("Story deleted"); 
+
+                const deletedId = currentStory.id;
+
+
+                onStoryDeleted?.(deletedId);
+                const updatedStories = localStories.filter((s) => s.id !== deletedId);
+
+                if (updatedStories.length === 0) {
+                    onClose();
+                } else {
+                    setLocalStories(updatedStories);
+                    if (currentIndex >= updatedStories.length) {
+                        setCurrentIndex(updatedStories.length - 1);
+                    }
+                }
+            } else {
+                alert(result.message);
+            }
+        } catch (error) {
+            console.error("Delete error:", error);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    if (!currentStory) return null;
+
+    const formatTime = (dateString: string) => {
+        const date = new Date(dateString);
+        return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    };
+
     const modalContent = (
         <div className="fixed inset-0 z-60 bg-black flex items-center justify-center animate-in fade-in duration-500">
-            {/* 1. Dynamic Background Blur */}
             {imageUrl && (
                 <div
                     className="absolute inset-0 opacity-40 bg-center bg-cover blur-[80px] scale-125 transition-all duration-700"
@@ -93,11 +134,10 @@ export const MyStoryViewerModal = ({ stories, initialIndex, onClose, onDeleteSto
                 />
             )}
 
-            {/* 2. Main Story Container */}
             <div className="relative w-full h-full md:max-w-md md:h-[90vh] bg-[#050505] md:rounded-[32px] overflow-hidden flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/5 z-10">
                 {/* Progress Indicators */}
                 <div className="absolute top-0 left-0 right-0 p-3 z-50 flex gap-1.5 pt-4 px-4">
-                    {stories.map((_, idx) => (
+                    {localStories.map((_, idx) => (
                         <div key={idx} className="h-0.75 flex-1 bg-white/20 rounded-full overflow-hidden">
                             <div
                                 className={cn(
@@ -133,8 +173,14 @@ export const MyStoryViewerModal = ({ stories, initialIndex, onClose, onDeleteSto
                     </button>
                 </div>
 
-                {/* 3. Media Content Area */}
+                {/* Media Content Area */}
                 <div className="flex-1 relative flex items-center justify-center bg-black overflow-hidden">
+                    {isDeleting && (
+                        <div className="absolute inset-0 z-60 bg-black/60 backdrop-blur-sm flex items-center justify-center">
+                            <Loader2 className="w-8 h-8 text-white animate-spin" />
+                        </div>
+                    )}
+
                     {videoUrl ? (
                         <video
                             src={videoUrl}
@@ -156,11 +202,9 @@ export const MyStoryViewerModal = ({ stories, initialIndex, onClose, onDeleteSto
                         />
                     )}
 
-                    {/* Navigasi Area (Hanya 80% tinggi agar tidak menabrak footer) */}
                     <div className="absolute top-0 left-0 w-1/3 h-[80%] z-20 cursor-pointer" onClick={handlePrev} />
                     <div className="absolute top-0 right-0 w-1/3 h-[80%] z-20 cursor-pointer" onClick={handleNext} />
 
-                    {/* Caption */}
                     {currentStory.caption && (
                         <div className="absolute bottom-24 left-0 right-0 p-6 text-center z-30">
                             <p className="text-white text-sm ">{currentStory.caption}</p>
@@ -168,7 +212,7 @@ export const MyStoryViewerModal = ({ stories, initialIndex, onClose, onDeleteSto
                     )}
                 </div>
 
-                {/* 4. Footer: Viewer Count & Sheet Trigger */}
+                {/* Footer: Viewer Count & Sheet Trigger */}
                 <div className="absolute bottom-0 left-0 right-0 p-8 z-50 flex justify-center bg-linear-to-t from-black/90 via-black/40 to-transparent">
                     <Sheet>
                         <SheetTrigger asChild>
@@ -194,7 +238,6 @@ export const MyStoryViewerModal = ({ stories, initialIndex, onClose, onDeleteSto
                             )}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            {/* Sheet Header */}
                             <div className="sticky top-0 z-10 px-8 pt-7 pb-5 border-b border-white/5 bg-transparent backdrop-blur-md">
                                 <div className="flex items-center justify-between">
                                     <div>
@@ -215,10 +258,15 @@ export const MyStoryViewerModal = ({ stories, initialIndex, onClose, onDeleteSto
                                             className="bg-[#1a1d23] border-white/10 text-white min-w-40 rounded-2xl p-1.5 shadow-2xl z-110"
                                         >
                                             <DropdownMenuItem
-                                                onClick={() => onDeleteStory?.(currentStory.id)}
+                                                disabled={isDeleting}
+                                                onClick={handleDelete}
                                                 className="flex items-center gap-2 text-red-400 focus:text-red-400 focus:bg-red-400/10 rounded-xl py-2.5 cursor-pointer transition-colors"
                                             >
-                                                <Trash2 className="w-4 h-4" />
+                                                {isDeleting ? (
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                ) : (
+                                                    <Trash2 className="w-4 h-4" />
+                                                )}
                                                 <span className="font-semibold text-sm">Delete Story</span>
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
@@ -226,7 +274,6 @@ export const MyStoryViewerModal = ({ stories, initialIndex, onClose, onDeleteSto
                                 </div>
                             </div>
 
-                            {/* Viewers List dengan ScrollArea Shadcn */}
                             <ScrollArea className="flex-1 w-full h-[calc(55vh-100px)]">
                                 <div className="px-5 pt-4 pb-12">
                                     {isLoadingViewers ? (
@@ -270,14 +317,11 @@ export const MyStoryViewerModal = ({ stories, initialIndex, onClose, onDeleteSto
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in duration-500">
+                                        <div className="flex flex-col items-center justify-center py-20 text-center">
                                             <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4 border border-white/10 shadow-inner">
                                                 <Eye className="w-7 h-7 text-slate-600 opacity-40" />
                                             </div>
                                             <p className="text-sm font-bold text-slate-400">No viewers yet</p>
-                                            <p className="text-[11px] text-slate-600 mt-1 max-w-45 mx-auto">
-                                                Your story activity will appear here once seen.
-                                            </p>
                                         </div>
                                     )}
                                 </div>
@@ -287,7 +331,7 @@ export const MyStoryViewerModal = ({ stories, initialIndex, onClose, onDeleteSto
                 </div>
             </div>
 
-            {/* Desktop Navigation Controls */}
+            {/* Desktop Navigation */}
             <button
                 onClick={handlePrev}
                 className={cn(
@@ -301,7 +345,7 @@ export const MyStoryViewerModal = ({ stories, initialIndex, onClose, onDeleteSto
                 onClick={handleNext}
                 className={cn(
                     "hidden md:flex absolute right-8 p-4 rounded-full bg-white/5 hover:bg-white/10 text-white backdrop-blur-md border border-white/10 transition-all",
-                    currentIndex === stories.length - 1 && "opacity-0 pointer-events-none",
+                    currentIndex === localStories.length - 1 && "opacity-0 pointer-events-none",
                 )}
             >
                 <ChevronRight className="w-8 h-8" />
