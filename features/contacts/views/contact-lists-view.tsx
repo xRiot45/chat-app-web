@@ -331,7 +331,7 @@ export default function ContactListsView({ isAddModalOpen, setIsAddModalOpen, on
                 selectedContact={selectedContact}
             />
 
-            <NewGroupModal isOpen={isGroupModalOpen} onClose={setGroupModalOpen} />
+            {isGroupModalOpen && <NewGroupModal isOpen={isGroupModalOpen} onClose={() => setGroupModalOpen(false)} />}
 
             <DeleteContactAlert
                 isOpen={isDeleteAlertOpen}
