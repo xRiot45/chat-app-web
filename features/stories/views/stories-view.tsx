@@ -96,7 +96,7 @@ export default function StoriesView() {
     const currentUser = stories.length > 0 ? stories[0].user : null;
 
     return (
-        <section className="px-5 py-2 shrink-0">
+        <section className="px-5 shrink-0">
             <div className="flex gap-4 overflow-x-auto no-scrollbar py-2">
                 {/* Tombol Tambah Story */}
                 <div

@@ -5,7 +5,7 @@ export const createGroupSchema = z.object({
         .string()
         .min(3, { message: "Group name must be at least 3 characters" })
         .max(100, { message: "Group name cannot exceed 100 characters" }),
-    description: z.string().max(255, { message: "Description cannot exceed 255 characters" }).optional(),
+    description: z.string().max(255, { message: "Description cannot exceed 255 characters" })
 });
 
 export type CreateGroupValues = z.infer<typeof createGroupSchema>;

@@ -3,6 +3,7 @@
 import Application from "@/components/application";
 import ButtonGrouping from "@/components/button-grouping";
 import SearchInput from "@/components/search-input";
+
 import { UserStatus } from "@/enums/user-status-enum";
 import { useChatManager } from "@/features/chats/hooks/use-chat-manager";
 import { ActiveChatSession, MobileViewType } from "@/features/chats/interfaces";
@@ -12,10 +13,13 @@ import ChatMainView from "@/features/chats/views/chat-main-view";
 import { getContacts } from "@/features/contacts/applications/queries/get-contact-query";
 import { Contact } from "@/features/contacts/interfaces/contact";
 import ContactListsView from "@/features/contacts/views/contact-lists-view";
+import MyGroupList from "@/features/groups/components/my-group-list";
 import SettingView from "@/features/settings/views/setting-view";
 import StoriesView from "@/features/stories/views/stories-view";
 import { cn } from "@/lib/utils";
 import { useThemeContext } from "@/providers/theme-provider";
+import * as Tabs from "@radix-ui/react-tabs";
+import { MessageSquare, Users } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import HomeBackground from "../components/home-background";
 
@@ -119,24 +123,64 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
                     <ButtonGrouping setIsAddModalOpen={setIsAddModalOpen} setIsSettingsOpen={setIsSettingsOpen} />
                 </div>
 
-                {/* Stories / Status Bar */}
-                <StoriesView />
-
                 {/* Search */}
                 <SearchInput placeholder="Search or start a new chat" />
 
-                {/* Chat Lists */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar px-3 space-y-6 pt-2 pb-4">
-                    <AllChatView
-                        data={conversations}
-                        currentUserId={currentUserId}
-                        contacts={contacts}
-                        handleChatSelect={handleChatSelect}
-                        selectedChat={selectedChat}
-                    />
-                </div>
+                {/* Stories / Status Bar */}
+                <StoriesView />
 
-                {/* New Chat / Contact List Drawer */}
+                {/* Tabs Section */}
+                <Tabs.Root defaultValue="chats" className="flex-1 flex flex-col min-h-0 mt-4">
+                    {/* Tab List dengan Custom Underline Style */}
+                    <Tabs.List className="flex items-center px-5 border-b border-slate-200 dark:border-white/5 gap-6">
+                        <Tabs.Trigger
+                            value="chats"
+                            className="group relative pb-3 pt-2 text-xs font-bold uppercase tracking-wider text-slate-500 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400 outline-none cursor-pointer transition-colors w-full"
+                        >
+                            <div className="flex items-center gap-2 justify-center">
+                                <MessageSquare className="w-3.5 h-3.5" />
+                                <span>Chats</span>
+                            </div>
+                            {/* Active Underline Indicator */}
+                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 scale-x-0 group-data-[state=active]:scale-x-100 transition-transform duration-200" />
+                        </Tabs.Trigger>
+
+                        <Tabs.Trigger
+                            value="groups"
+                            className="group relative pb-3 pt-2 text-xs font-bold uppercase tracking-wider text-slate-500 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400 outline-none cursor-pointer transition-colors w-full"
+                        >
+                            <div className="flex items-center gap-2 justify-center">
+                                <Users className="w-3.5 h-3.5" />
+                                <span>Groups</span>
+                            </div>
+                            {/* Active Underline Indicator */}
+                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 scale-x-0 group-data-[state=active]:scale-x-100 transition-transform duration-200" />
+                        </Tabs.Trigger>
+                    </Tabs.List>
+
+                    {/* Content Area - Tetap sama, menggunakan wrapper agar scroll mandiri */}
+                    <div className="flex-1 overflow-hidden">
+                        <Tabs.Content value="chats" className="h-full outline-none animate-in fade-in-50 duration-300">
+                            <div className="h-full overflow-y-auto custom-scrollbar px-3 pt-4 pb-4">
+                                <AllChatView
+                                    data={conversations}
+                                    currentUserId={currentUserId}
+                                    contacts={contacts}
+                                    handleChatSelect={handleChatSelect}
+                                    selectedChat={selectedChat}
+                                />
+                            </div>
+                        </Tabs.Content>
+
+                        <Tabs.Content value="groups" className="h-full outline-none animate-in fade-in-50 duration-300">
+                            <div className="h-full overflow-y-auto custom-scrollbar px-3 pt-4 pb-4">
+                                <MyGroupList />
+                            </div>
+                        </Tabs.Content>
+                    </div>
+                </Tabs.Root>
+
+                {/* New Chat Drawer */}
                 <ContactListsView
                     isAddModalOpen={isAddModalOpen}
                     setIsAddModalOpen={setIsAddModalOpen}

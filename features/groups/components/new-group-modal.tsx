@@ -186,7 +186,7 @@ export function NewGroupModal({ isOpen, onClose }: NewGroupModalProps) {
 
                             {/* Description */}
                             <div className="space-y-2">
-                                <Label htmlFor="description">Description (Optional)</Label>
+                                <Label htmlFor="description">Description</Label>
                                 <Input
                                     id="description"
                                     placeholder="What is this group about?"
