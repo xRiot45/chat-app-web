@@ -8,6 +8,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NewGroupModal } from "@/features/groups/components/new-group-modal";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Loader2, MoreVertical, Pencil, RefreshCw, Send, Trash, UserPlus, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -16,7 +17,6 @@ import { deleteContactAction } from "../applications/actions/delete-contact-acti
 import { getContacts } from "../applications/queries/get-contact-query";
 import { DeleteContactAlert } from "../components/delete-contact-alert";
 import { NewContactModal } from "../components/new-contact-modal";
-import { NewGroupModal } from "../components/new-group-modal";
 import { Contact } from "../interfaces/contact";
 
 interface ContactListsViewProps {
