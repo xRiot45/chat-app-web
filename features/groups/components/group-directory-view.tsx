@@ -3,7 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { API_BASE_URL } from "@/configs/api-base-url";
 import { UserRoleGroup } from "@/enums/user-role-group-enum";
-import { ActiveChatSession } from "@/features/chats/interfaces";
+import { ActiveGroupChat } from "@/features/chats/interfaces";
 import { cn } from "@/lib/utils";
 import {
     Bell,
@@ -25,7 +25,7 @@ import { getProfileGroup } from "../application/queries/get-profile-group";
 import { Group, GroupMember, SharedMediaItem } from "../interfaces/group";
 
 interface GroupDirectoryViewProps {
-    selectedChat: ActiveChatSession;
+    selectedChat: ActiveGroupChat;
     onClose: () => void;
 }
 
@@ -73,14 +73,16 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ selected
     const [isLoading, setIsLoading] = useState<boolean>(false);
 
     useEffect(() => {
-        const fetchGroupData = async () => {
-            if (!selectedChat?.recipientId) return;
+        const currentGroupId = selectedChat.groupId;
 
+        if (!currentGroupId) return;
+
+        const fetchGroupData = async () => {
             setIsLoading(true);
             try {
-                const res = await getProfileGroup(selectedChat.recipientId);
+                const res = await getProfileGroup(currentGroupId);
                 if (res.success && res.data) {
-                    setGroupData(res.data as unknown as Group);
+                    setGroupData(res.data);
                 }
             } catch (error) {
                 console.error("Failed to load group profile:", error);
@@ -90,7 +92,7 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ selected
         };
 
         fetchGroupData();
-    }, [selectedChat.recipientId]);
+    }, [selectedChat.groupId]);
 
     if (isLoading) {
         return (

@@ -5,7 +5,7 @@ import ButtonGrouping from "@/components/button-grouping";
 import SearchInput from "@/components/search-input";
 import { UserStatus } from "@/enums/user-status-enum";
 import { useChatManager } from "@/features/chats/hooks/use-chat-manager";
-import { ActiveChatSession, MobileViewType } from "@/features/chats/interfaces";
+import { ActiveGroupChat, ActivePrivateChat, ActiveSession, MobileViewType } from "@/features/chats/interfaces";
 import AllChatView from "@/features/chats/views/all-chat-view";
 import { ChatDirectoryView } from "@/features/chats/views/chat-directory-view";
 import ChatMainView from "@/features/chats/views/chat-main-view";
@@ -31,7 +31,7 @@ interface ChatClientPageProps {
 export default function HomeView({ token, currentUserId }: ChatClientPageProps) {
     const { isDarkMode } = useThemeContext();
 
-    const [selectedChat, setSelectedChat] = useState<ActiveChatSession | null>(null);
+    const [selectedChat, setSelectedChat] = useState<ActiveSession | null>(null);
     const [mobileView, setMobileView] = useState<MobileViewType>("list");
     const [showRightPanel, setShowRightPanel] = useState(true);
     const [inputText, setInputText] = useState("");
@@ -75,14 +75,14 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
             targetRecipientId = chat.userId;
         }
 
-        const mappedChat: ActiveChatSession = {
+        const mappedChat: ActivePrivateChat = {
+            id: chat.id,
             conversationId: chat.id,
             recipientId: targetRecipientId,
             name: targetName,
             avatar: targetAvatar,
-            type: chat.type || "private",
+            type: "private",
             status: chat.status || "OFFLINE",
-            members: chat.members || 2,
         };
 
         setSelectedChat(mappedChat);
@@ -90,14 +90,14 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
     };
 
     const handleGroupSelect = (group: any) => {
-        const mappedGroup: ActiveChatSession = {
-            conversationId: group.id,
-            recipientId: group.id,
+        const mappedGroup: ActiveGroupChat = {
+            id: group.id,
             name: group.name,
+            groupId: group.id,
             avatar: group.avatarUrl || "",
             type: "group",
-            status: UserStatus.ONLINE,
-            members: group._count?.members || group.members?.length || 0,
+            membersCount: group._count?.members || group.members?.length || 0,
+            description: group.description,
         };
 
         setSelectedChat(mappedGroup);
@@ -105,14 +105,14 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
     };
 
     const handleStartMessage = (contact: Contact) => {
-        const newChatData: ActiveChatSession = {
-            conversationId: undefined,
+        const newChatData: ActivePrivateChat = {
+            id: contact.contactUser.id, // Temporary ID
+            conversationId: undefined, // Belum ada conversation ID
             recipientId: contact.contactUser.id,
             name: contact.alias || contact.contactUser.fullName || contact.contactUser.username,
             avatar: contact.contactUser.avatarUrl || "",
             type: "private",
             status: UserStatus.ONLINE,
-            members: 2,
         };
 
         setSelectedChat(newChatData);

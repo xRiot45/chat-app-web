@@ -4,10 +4,10 @@ import { UserStatus } from "@/enums/user-status-enum";
 import { cn } from "@/lib/utils";
 import { Bell, Blocks, Download, FileText, Heart, Search, X } from "lucide-react";
 import Image from "next/image";
-import { ActiveChatSession } from "../interfaces";
+import { ActivePrivateChat } from "../interfaces";
 
 interface ChatDirectoryViewProps {
-    selectedChat: ActiveChatSession;
+    selectedChat: ActivePrivateChat;
     onClose: () => void;
 }
 
