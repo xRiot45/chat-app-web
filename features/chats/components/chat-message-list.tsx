@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Message } from "../interfaces";
+import { Message } from "../interfaces/message-interface";
 import ChatMessageItem from "./chat-message-item";
 import EmptyChatState from "./empty-chat-state";
 

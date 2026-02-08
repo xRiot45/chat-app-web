@@ -3,7 +3,6 @@
 import Application from "@/components/application";
 import ButtonGrouping from "@/components/button-grouping";
 import SearchInput from "@/components/search-input";
-
 import { UserStatus } from "@/enums/user-status-enum";
 import { useChatManager } from "@/features/chats/hooks/use-chat-manager";
 import { ActiveChatSession, MobileViewType } from "@/features/chats/interfaces";
@@ -180,7 +179,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
                     </div>
                 </Tabs.Root>
 
-                {/* New Chat Drawer */}
+                {/* All My Contacts */}
                 <ContactListsView
                     isAddModalOpen={isAddModalOpen}
                     setIsAddModalOpen={setIsAddModalOpen}

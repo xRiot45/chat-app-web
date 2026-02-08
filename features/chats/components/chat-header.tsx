@@ -1,6 +1,7 @@
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserStatus } from "@/enums/user-status-enum";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, MoreHorizontal, Phone, Video } from "lucide-react";
 import { ActiveChatSession } from "../interfaces";
@@ -37,7 +38,7 @@ export default function ChatHeader({
                         {selectedChat.name}
                     </h2>
                     <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                        {selectedChat.status === "ONLINE" ? (
+                        {selectedChat.status === UserStatus.ONLINE ? (
                             <>
                                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Online
                             </>

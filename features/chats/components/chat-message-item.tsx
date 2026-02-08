@@ -4,7 +4,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Check, Share2 } from "lucide-react";
-import { Message } from "../interfaces";
+import { Message } from "../interfaces/message-interface";
+
 
 interface ChatMessageItemProps {
     message: Message;
