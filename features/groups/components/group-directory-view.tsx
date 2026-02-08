@@ -2,7 +2,6 @@ import { renderRoleBadge } from "@/components/role-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { API_BASE_URL } from "@/configs/api-base-url";
-import { UserRoleGroup } from "@/enums/user-role-group-enum";
 import { ActiveGroupChat } from "@/features/chats/interfaces";
 import { cn } from "@/lib/utils";
 import {
@@ -21,44 +20,14 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import React, { useEffect, useState } from "react";
-import { getProfileGroup } from "../application/queries/get-profile-group";
+import { getMembersGroup } from "../application/queries/get-members-group-query";
+import { getProfileGroup } from "../application/queries/get-profile-group-query";
 import { Group, GroupMember, SharedMediaItem } from "../interfaces/group";
 
 interface GroupDirectoryViewProps {
     selectedChat: ActiveGroupChat;
     onClose: () => void;
 }
-
-const MOCK_MEMBERS: GroupMember[] = [
-    {
-        id: "1",
-        name: "Thomas Alberto",
-        avatarUrl: "https://i.pravatar.cc/150?u=thomas",
-        role: UserRoleGroup.OWNER,
-        isOnline: true,
-    },
-    {
-        id: "2",
-        name: "Sarah Connors",
-        avatarUrl: "https://i.pravatar.cc/150?u=sarah",
-        role: UserRoleGroup.ADMIN,
-        isOnline: true,
-    },
-    {
-        id: "3",
-        name: "John Doe",
-        avatarUrl: "https://i.pravatar.cc/150?u=john",
-        role: UserRoleGroup.MEMBER,
-        isOnline: false,
-    },
-    {
-        id: "4",
-        name: "Jane Smith",
-        avatarUrl: "https://i.pravatar.cc/150?u=jane",
-        role: UserRoleGroup.MEMBER,
-        isOnline: false,
-    },
-];
 
 const MOCK_MEDIA: SharedMediaItem[] = [
     { id: "1", type: "image", src: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=500&q=80" },
@@ -70,28 +39,31 @@ const MOCK_MEDIA: SharedMediaItem[] = [
 
 export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ selectedChat, onClose }) => {
     const [groupData, setGroupData] = useState<Group | null>(null);
+    const [members, setMembers] = useState<GroupMember[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
 
     useEffect(() => {
         const currentGroupId = selectedChat.groupId;
-
         if (!currentGroupId) return;
 
-        const fetchGroupData = async () => {
+        const loadData = async () => {
             setIsLoading(true);
             try {
-                const res = await getProfileGroup(currentGroupId);
-                if (res.success && res.data) {
-                    setGroupData(res.data);
-                }
+                const [profileRes, membersRes] = await Promise.all([
+                    getProfileGroup(currentGroupId),
+                    getMembersGroup(currentGroupId),
+                ]);
+
+                if (profileRes.success) setGroupData(profileRes?.data || null);
+                if (membersRes.success) setMembers(membersRes?.data || []);
             } catch (error) {
-                console.error("Failed to load group profile:", error);
+                console.error("Failed to load group directory data:", error);
             } finally {
                 setIsLoading(false);
             }
         };
 
-        fetchGroupData();
+        loadData();
     }, [selectedChat.groupId]);
 
     if (isLoading) {
@@ -181,44 +153,40 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ selected
 
                 {/* Members List Section */}
                 <div>
-                    <div className="flex items-center justify-between mb-4">
-                        <h4 className="font-bold text-xs text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                            <Users className="w-3.5 h-3.5" /> Members
-                        </h4>
-                        {/* <button className="text-indigo-500 text-xs hover:underline font-medium">See all</button> */}
-                    </div>
+                    <h4 className="font-bold text-xs text-slate-400 uppercase tracking-wider flex items-center gap-2 mb-4">
+                        <Users className="w-3.5 h-3.5" /> Members
+                    </h4>
 
-                    {/* WRAPPER SCROLL AREA */}
-                    {/* Sesuaikan "h-72" dengan tinggi yang Anda inginkan */}
                     <ScrollArea className="h-72 w-full pr-3">
                         <div className="space-y-1">
-                            {MOCK_MEMBERS.map((member) => (
+                            {members.map((item, idx) => (
                                 <div
-                                    key={member.id}
-                                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer transition-colors group"
+                                    key={item.user.id + idx}
+                                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 group transition-colors"
                                 >
-                                    <div className="relative">
-                                        <Avatar className="w-10 h-10 border border-slate-200 dark:border-white/10">
-                                            <AvatarImage src={member.avatarUrl} />
-                                            <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        {member.isOnline && (
-                                            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-[#0f1115] rounded-full"></span>
-                                        )}
-                                    </div>
+                                    <Avatar className="w-10 h-10 border border-slate-200 dark:border-white/10">
+                                        <AvatarImage
+                                            src={
+                                                item.user.avatarUrl
+                                                    ? `${API_BASE_URL}/api/public/${item.user.avatarUrl}`
+                                                    : ""
+                                            }
+                                            className="object-cover"
+                                        />
+                                        <AvatarFallback>{item.user.fullName.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
                                             <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
-                                                {member.name}
+                                                {item.user.fullName}
                                             </p>
-                                            {renderRoleBadge(member.role)}
+                                            {renderRoleBadge(item.role)}
                                         </div>
-                                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                                            {member.isOnline ? "Online" : "Last seen recently"}
-                                        </p>
+                                        <p className="text-[11px] text-slate-500 truncate">@{item.user.username}</p>
                                     </div>
-                                    {/* Admin Actions Dropdown Trigger (Mock) */}
-                                    <button className="p-1.5 text-slate-400 hover:text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity">
+
+                                    <button className="p-1.5 text-slate-400 opacity-0 group-hover:opacity-100">
                                         <MoreVertical className="w-4 h-4" />
                                     </button>
                                 </div>

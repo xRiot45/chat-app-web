@@ -3,7 +3,7 @@ import { API_BASE_URL } from "@/configs/api-base-url";
 import { cn } from "@/lib/utils";
 import { Loader2, MoreVertical, Users } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { getMyGroups } from "../application/queries/get-my-groups-guery";
+import { getMyGroups } from "../application/queries/get-my-groups-query";
 import { Group } from "../interfaces/group";
 
 interface MyGroupListProps {

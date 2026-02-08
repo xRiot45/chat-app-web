@@ -11,11 +11,9 @@ export interface Group {
 }
 
 export interface GroupMember {
-    id: string;
-    name: string;
-    avatarUrl: string;
     role: UserRoleGroup;
-    isOnline: boolean;
+    joinedAt: Date;
+    user: UserShortInfo;
 }
 
 export interface SharedMediaItem {
