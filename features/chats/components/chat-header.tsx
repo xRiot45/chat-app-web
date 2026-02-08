@@ -3,7 +3,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserStatus } from "@/enums/user-status-enum";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, MoreHorizontal, Phone, Video } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, Phone, Users, Video } from "lucide-react";
 import { ActiveChatSession } from "../interfaces";
 
 interface ChatHeaderProps {
@@ -19,6 +19,9 @@ export default function ChatHeader({
     onToggleRightPanel,
     onBackToMobileList,
 }: ChatHeaderProps) {
+    // Cek apakah ini chat group
+    const isGroup = selectedChat.type === "group";
+
     return (
         <header className="h-19 px-6 flex items-center justify-between border-b border-slate-200/50 dark:border-white/5 bg-white/40 dark:bg-[#0f1115]/60 backdrop-blur-md sticky top-0 z-30">
             <div className="flex items-center gap-4">
@@ -29,7 +32,10 @@ export default function ChatHeader({
                 <div className="relative cursor-pointer" onClick={onToggleRightPanel}>
                     <Avatar className="w-10 h-10">
                         <AvatarImage src={selectedChat.avatar} />
-                        <AvatarFallback>{selectedChat.name.charAt(0).toUpperCase()}</AvatarFallback>
+                        <AvatarFallback className="bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
+                            {/* Jika Group, tampilkan Icon Users, jika Private pakai Inisial */}
+                            {isGroup ? <Users className="w-5 h-5" /> : selectedChat.name.charAt(0).toUpperCase()}
+                        </AvatarFallback>
                     </Avatar>
                 </div>
 
@@ -37,8 +43,13 @@ export default function ChatHeader({
                     <h2 className="font-bold text-base text-slate-800 dark:text-slate-100 leading-tight hover:text-indigo-500 transition-colors">
                         {selectedChat.name}
                     </h2>
+
+                    {/* LOGIC STATUS vs GROUP INFO */}
                     <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                        {selectedChat.status === UserStatus.ONLINE ? (
+                        {isGroup ? (
+                            <span>{selectedChat.members} members</span>
+                        ) :
+                        selectedChat.status === UserStatus.ONLINE ? (
                             <>
                                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Online
                             </>
@@ -50,6 +61,7 @@ export default function ChatHeader({
             </div>
 
             <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
+                {/* Biasanya Group Chat juga bisa call, tapi jika ingin disembunyikan untuk group, gunakan kondisi !isGroup */}
                 <button className="p-2.5 rounded-full hover:bg-slate-200 dark:hover:bg-white/10 transition-all hover:text-indigo-500">
                     <Phone className="w-5 h-5" />
                 </button>

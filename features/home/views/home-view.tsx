@@ -12,6 +12,7 @@ import ChatMainView from "@/features/chats/views/chat-main-view";
 import { getContacts } from "@/features/contacts/applications/queries/get-contact-query";
 import { Contact } from "@/features/contacts/interfaces/contact";
 import ContactListsView from "@/features/contacts/views/contact-lists-view";
+import { GroupDirectoryView } from "@/features/groups/components/group-directory-view";
 import MyGroupList from "@/features/groups/components/my-group-list";
 import SettingView from "@/features/settings/views/setting-view";
 import StoriesView from "@/features/stories/views/stories-view";
@@ -85,6 +86,21 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
         };
 
         setSelectedChat(mappedChat);
+        setMobileView("chat");
+    };
+
+    const handleGroupSelect = (group: any) => {
+        const mappedGroup: ActiveChatSession = {
+            conversationId: group.id,
+            recipientId: group.id,
+            name: group.name,
+            avatar: group.avatarUrl || "",
+            type: "group",
+            status: UserStatus.ONLINE,
+            members: group._count?.members || group.members?.length || 0,
+        };
+
+        setSelectedChat(mappedGroup);
         setMobileView("chat");
     };
 
@@ -173,7 +189,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
 
                         <Tabs.Content value="groups" className="h-full outline-none animate-in fade-in-50 duration-300">
                             <div className="h-full overflow-y-auto custom-scrollbar px-3 pt-4 pb-4">
-                                <MyGroupList />
+                                <MyGroupList onSelect={handleGroupSelect} />
                             </div>
                         </Tabs.Content>
                     </div>
@@ -206,10 +222,14 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
                 messagesEndRef={messagesEndRef}
             />
 
-            {/* === RIGHT SIDEBAR (DETAILS OF CHAT) === */}
-            {selectedChat && showRightPanel && (
-                <ChatDirectoryView selectedChat={selectedChat} onClose={() => setShowRightPanel(false)} />
-            )}
+            {/* === RIGHT SIDEBAR (DETAILS OF 1 ON 1 Chat) === */}
+            {selectedChat &&
+                showRightPanel &&
+                (selectedChat.type === "group" ? (
+                    <GroupDirectoryView selectedChat={selectedChat} onClose={() => setShowRightPanel(false)} />
+                ) : (
+                    <ChatDirectoryView selectedChat={selectedChat} onClose={() => setShowRightPanel(false)} />
+                ))}
         </div>
     );
 }

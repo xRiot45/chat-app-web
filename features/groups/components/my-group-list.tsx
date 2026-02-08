@@ -1,14 +1,16 @@
-"use client";
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { API_BASE_URL } from "@/configs/api-base-url";
-import { cn } from "@/lib/utils"; // Pastikan utiliti cn tersedia
+import { cn } from "@/lib/utils";
 import { Loader2, MoreVertical, Users } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { getMyGroups } from "../application/queries/get-my-groups-guery";
 import { Group } from "../interfaces/group";
 
-export default function MyGroupList() {
+interface MyGroupListProps {
+    onSelect?: (group: Group) => void;
+}
+
+export default function MyGroupList({ onSelect }: MyGroupListProps) {
     const [groups, setGroups] = useState<Group[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
@@ -30,6 +32,13 @@ export default function MyGroupList() {
     useEffect(() => {
         fetchGroups();
     }, [fetchGroups]);
+
+    const handleGroupClick = (group: Group) => {
+        setSelectedGroupId(group.id);
+        if (onSelect) {
+            onSelect(group);
+        }
+    };
 
     return (
         <div className="flex flex-col h-full">
@@ -64,7 +73,7 @@ export default function MyGroupList() {
                     return (
                         <div
                             key={group.id}
-                            onClick={() => setSelectedGroupId(group.id)}
+                            onClick={() => handleGroupClick(group)}
                             className={cn(
                                 "flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all border border-transparent group relative",
                                 isSelected
@@ -74,7 +83,7 @@ export default function MyGroupList() {
                         >
                             <Avatar className="w-12 h-12 border-2 border-transparent group-hover:border-indigo-500/20 transition-all">
                                 <AvatarImage
-                                    src={`${API_BASE_URL}/api/public/${group?.iconUrl}` || ""}
+                                    src={group.iconUrl ? `${API_BASE_URL}/api/public/${group.iconUrl}` : ""}
                                     className="object-cover"
                                     alt={group.name}
                                     crossOrigin="anonymous"

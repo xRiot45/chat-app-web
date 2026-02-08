@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SHARED_MEDIA } from "@/constants/shared-media";
+import { UserStatus } from "@/enums/user-status-enum";
 import { cn } from "@/lib/utils";
 import { Bell, Blocks, Download, FileText, Heart, Search, X } from "lucide-react";
 import Image from "next/image";
@@ -38,7 +39,7 @@ export const ChatDirectoryView = ({ selectedChat, onClose }: ChatDirectoryViewPr
                             <AvatarImage src={selectedChat.avatar} />
                             <AvatarFallback>{selectedChat.name.charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
-                        {selectedChat.status === "ONLINE" && (
+                        {selectedChat.status === UserStatus.ONLINE && (
                             <span className="absolute bottom-5 right-1 w-4 h-4 bg-green-500 border-2 border-white dark:border-[#0f1115] rounded-full"></span>
                         )}
                     </div>
