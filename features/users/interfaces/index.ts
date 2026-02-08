@@ -12,3 +12,10 @@ export interface User {
     createdAt?: string;
     updatedAt?: string;
 }
+
+export interface UserShortInfo {
+    id: string;
+    username: string;
+    fullName: string;
+    avatarUrl: string;
+}

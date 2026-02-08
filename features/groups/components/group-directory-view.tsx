@@ -1,14 +1,16 @@
 import { renderRoleBadge } from "@/components/role-badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Sesuaikan path
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { API_BASE_URL } from "@/configs/api-base-url";
 import { UserRoleGroup } from "@/enums/user-role-group-enum";
 import { ActiveChatSession } from "@/features/chats/interfaces";
-import { cn } from "@/lib/utils"; // Sesuaikan path
+import { cn } from "@/lib/utils";
 import {
     Bell,
     Download,
     FileText,
     Image as ImageIcon,
+    Loader2,
     LogOut,
     MoreVertical,
     Search,
@@ -18,16 +20,14 @@ import {
     X,
 } from "lucide-react";
 import Image from "next/image";
-import React from "react";
-import { GroupMember, SharedMediaItem } from "../interfaces/group";
+import React, { useEffect, useState } from "react";
+import { getProfileGroup } from "../application/queries/get-profile-group";
+import { Group, GroupMember, SharedMediaItem } from "../interfaces/group";
 
 interface GroupDirectoryViewProps {
     selectedChat: ActiveChatSession;
     onClose: () => void;
 }
-
-const MOCK_DESCRIPTION =
-    "Official community for backend developers to discuss architecture, scalability, and coffee beans. ☕️🚀";
 
 const MOCK_MEMBERS: GroupMember[] = [
     {
@@ -69,6 +69,40 @@ const MOCK_MEDIA: SharedMediaItem[] = [
 ];
 
 export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ selectedChat, onClose }) => {
+    const [groupData, setGroupData] = useState<Group | null>(null);
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+
+    useEffect(() => {
+        const fetchGroupData = async () => {
+            if (!selectedChat?.recipientId) return;
+
+            setIsLoading(true);
+            try {
+                const res = await getProfileGroup(selectedChat.recipientId);
+                if (res.success && res.data) {
+                    setGroupData(res.data as unknown as Group);
+                }
+            } catch (error) {
+                console.error("Failed to load group profile:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchGroupData();
+    }, [selectedChat.recipientId]);
+
+    if (isLoading) {
+        return (
+            <aside className="h-full w-full lg:w-100 bg-white/95 dark:bg-[#0f1115]/95 backdrop-blur-xl flex items-center justify-center border-l border-slate-200 dark:border-white/5">
+                <div className="flex flex-col items-center gap-2 text-slate-400">
+                    <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                    <span className="text-xs font-medium uppercase tracking-wider">Loading Profile...</span>
+                </div>
+            </aside>
+        );
+    }
+
     return (
         <aside
             className={cn(
@@ -93,27 +127,35 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ selected
                 <div className="flex flex-col items-center text-center">
                     <div className="relative group cursor-pointer">
                         <Avatar className="w-24 h-24 mb-4 ring-4 ring-slate-100 dark:ring-white/5 shadow-xl transition-transform hover:scale-105">
-                            <AvatarImage src={selectedChat.avatar} />
+                            <AvatarImage
+                                src={
+                                    groupData?.iconUrl
+                                        ? `${API_BASE_URL}/api/public/${groupData.iconUrl}`
+                                        : selectedChat.avatar
+                                }
+                                className="object-cover"
+                            />
                             <AvatarFallback className="bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-200 text-2xl font-bold">
-                                {selectedChat.name.substring(0, 2).toUpperCase()}
+                                {groupData?.name?.substring(0, 2).toUpperCase() || "GR"}
                             </AvatarFallback>
                         </Avatar>
-                        {/* Edit Icon Overlay (Visual Only) */}
+
+                        {/* Edit Icon Overlay */}
                         <div className="absolute bottom-4 right-0 p-1.5 bg-slate-900 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
                             <MoreVertical className="w-3 h-3" />
                         </div>
                     </div>
 
                     <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1 leading-tight">
-                        {selectedChat.name}
+                        {groupData?.name || selectedChat.name}
                     </h3>
 
                     <p className="text-sm font-medium text-indigo-500 dark:text-indigo-400 mb-3">
-                        {selectedChat.members} Members
+                        {groupData?.membersCount || 0} Members
                     </p>
 
-                    <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300 max-w-[80%]">
-                        {MOCK_DESCRIPTION}
+                    <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300 max-w-[90%]">
+                        {groupData?.description || "No description provided."}
                     </p>
 
                     {/* Quick Actions */}
@@ -141,7 +183,7 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ selected
                         <h4 className="font-bold text-xs text-slate-400 uppercase tracking-wider flex items-center gap-2">
                             <Users className="w-3.5 h-3.5" /> Members
                         </h4>
-                        <button className="text-indigo-500 text-xs hover:underline font-medium">See all</button>
+                        {/* <button className="text-indigo-500 text-xs hover:underline font-medium">See all</button> */}
                     </div>
 
                     {/* WRAPPER SCROLL AREA */}

@@ -13,7 +13,7 @@ import { getContacts } from "@/features/contacts/applications/queries/get-contac
 import { Contact } from "@/features/contacts/interfaces/contact";
 import ContactListsView from "@/features/contacts/views/contact-lists-view";
 import { GroupDirectoryView } from "@/features/groups/components/group-directory-view";
-import MyGroupList from "@/features/groups/components/my-group-list";
+import MyGroupList from "@/features/groups/views/my-group-list";
 import SettingView from "@/features/settings/views/setting-view";
 import StoriesView from "@/features/stories/views/stories-view";
 import { cn } from "@/lib/utils";
