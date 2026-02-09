@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ActiveChatSession } from "@/features/chats/interfaces";
+import { ActivePrivateChat } from "@/features/chats/interfaces";
 import { Contact } from "@/features/contacts/interfaces/contact";
 import { formatTime } from "@/helpers/format-time";
 import { cn } from "@/lib/utils";
@@ -10,15 +10,21 @@ import { CheckCheck, MessageSquare } from "lucide-react";
 import { useMemo } from "react";
 import { ChatConversation } from "../interfaces/message-interface";
 
-interface AllChatProps {
+interface AllPrivateChatListProps {
     data: ChatConversation[];
     contacts: Contact[];
     currentUserId: string;
     handleChatSelect: (chat: ChatConversation) => void;
-    selectedChat: ActiveChatSession | null;
+    selectedPrivateChat: ActivePrivateChat | null;
 }
 
-export default function AllChatView({ data, contacts, currentUserId, handleChatSelect, selectedChat }: AllChatProps) {
+export default function AllPrivateChatList({
+    data,
+    contacts,
+    currentUserId,
+    handleChatSelect,
+    selectedPrivateChat,
+}: AllPrivateChatListProps) {
     const processedChats = useMemo(() => {
         return data
             .filter((chat) => {
@@ -65,7 +71,7 @@ export default function AllChatView({ data, contacts, currentUserId, handleChatS
                     const isOwnMessage = chat.lastMessage?.senderId === currentUserId;
                     const isMessageRead = chat.lastMessage?.isRead;
                     const unreadCount = chat.unreadCount ?? 0;
-                    const isSelected = selectedChat?.conversationId === chat.id;
+                    const isSelected = selectedPrivateChat?.conversationId === chat.id;
 
                     return (
                         <div

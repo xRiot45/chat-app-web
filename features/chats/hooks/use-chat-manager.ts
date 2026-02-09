@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { getMessagesQuery } from "../application/queries/get-message-query";
 import { getRecentMessagesQuery } from "../application/queries/get-recent-message-query";
-import { ActiveChatSession } from "../interfaces";
+import { ActivePrivateChat } from "../interfaces";
 import { ChatConversation } from "../interfaces/message-interface";
 import { useChatSocket } from "./use-chat-socket";
 
 interface UseChatManagerProps {
     token: string;
     currentUserId: string;
-    selectedChat: ActiveChatSession | null;
+    selectedChat: ActivePrivateChat | null;
 }
 
 export const useChatManager = ({ token, currentUserId, selectedChat }: UseChatManagerProps) => {

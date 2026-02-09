@@ -12,7 +12,6 @@ import {
     Loader2,
     LogOut,
     MoreVertical,
-    Search,
     ShieldAlert,
     UserPlus,
     Users,
@@ -138,13 +137,13 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ selected
                             <Bell className="w-5 h-5 text-slate-500 dark:text-slate-400" />
                             Mute
                         </button>
-                        <button className="flex-1 py-3 px-2 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors flex flex-col items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        {/* <button className="flex-1 py-3 px-2 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors flex flex-col items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
                             <Search className="w-5 h-5 text-slate-500 dark:text-slate-400" />
                             Search
-                        </button>
+                        </button> */}
                         <button className="flex-1 py-3 px-2 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors flex flex-col items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-300">
                             <UserPlus className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
-                            Add
+                            Add Members
                         </button>
                     </div>
                 </div>

@@ -4,10 +4,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserStatus } from "@/enums/user-status-enum";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, MoreHorizontal, Phone, Users, Video } from "lucide-react";
-import { ActiveChatSession } from "../interfaces";
+import { ActiveSession } from "../interfaces";
 
 interface ChatHeaderProps {
-    selectedChat: ActiveChatSession;
+    selectedChat: ActiveSession;
     showRightPanel: boolean;
     onToggleRightPanel: () => void;
     onBackToMobileList: () => void;
@@ -19,7 +19,6 @@ export default function ChatHeader({
     onToggleRightPanel,
     onBackToMobileList,
 }: ChatHeaderProps) {
-    // Cek apakah ini chat group
     const isGroup = selectedChat.type === "group";
 
     return (
@@ -33,7 +32,6 @@ export default function ChatHeader({
                     <Avatar className="w-10 h-10">
                         <AvatarImage src={selectedChat.avatar} />
                         <AvatarFallback className="bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
-                            {/* Jika Group, tampilkan Icon Users, jika Private pakai Inisial */}
                             {isGroup ? <Users className="w-5 h-5" /> : selectedChat.name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                     </Avatar>
@@ -46,10 +44,9 @@ export default function ChatHeader({
 
                     {/* LOGIC STATUS vs GROUP INFO */}
                     <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                        {isGroup ? (
-                            <span>{selectedChat.members} members</span>
-                        ) :
-                        selectedChat.status === UserStatus.ONLINE ? (
+                        {selectedChat.type === "group" ? (
+                            <span>{selectedChat.membersCount} members</span>
+                        ) : selectedChat.status === UserStatus.ONLINE ? (
                             <>
                                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Online
                             </>

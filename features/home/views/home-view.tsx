@@ -6,7 +6,7 @@ import SearchInput from "@/components/search-input";
 import { UserStatus } from "@/enums/user-status-enum";
 import { useChatManager } from "@/features/chats/hooks/use-chat-manager";
 import { ActiveGroupChat, ActivePrivateChat, ActiveSession, MobileViewType } from "@/features/chats/interfaces";
-import AllChatView from "@/features/chats/views/all-chat-view";
+import AllPrivateChatList from "@/features/chats/views/all-private-chat-list";
 import { ChatDirectoryView } from "@/features/chats/views/chat-directory-view";
 import ChatMainView from "@/features/chats/views/chat-main-view";
 import { getContacts } from "@/features/contacts/applications/queries/get-contact-query";
@@ -31,7 +31,8 @@ interface ChatClientPageProps {
 export default function HomeView({ token, currentUserId }: ChatClientPageProps) {
     const { isDarkMode } = useThemeContext();
 
-    const [selectedChat, setSelectedChat] = useState<ActiveSession | null>(null);
+    const [selectedPrivateChat, setSelectedPrivateChat] = useState<ActivePrivateChat | null>(null);
+    const [selectedGroupChat, setSelectedGroupChat] = useState<ActiveGroupChat | null>(null);
     const [mobileView, setMobileView] = useState<MobileViewType>("list");
     const [showRightPanel, setShowRightPanel] = useState(true);
     const [inputText, setInputText] = useState("");
@@ -39,10 +40,12 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [contacts, setContacts] = useState<Contact[]>([]);
 
+    const activeSession: ActiveSession | null = selectedGroupChat || selectedPrivateChat;
+
     const { conversations, messages, onSendMessage, messagesEndRef } = useChatManager({
         token,
         currentUserId,
-        selectedChat,
+        selectedChat: activeSession as ActivePrivateChat,
     });
 
     useEffect(() => {
@@ -58,12 +61,13 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
         setInputText("");
     };
 
-    const handleChatSelect = (chat: any) => {
+    // --- 3. HANDLERS DENGAN LOGIC PEMISAHAN ---
+
+    const handlePrivateChatSelect = (chat: any) => {
         let targetRecipientId = chat.id;
         let targetName = chat.name;
         let targetAvatar = chat.avatar;
 
-        // Logic Mapping dari DTO API ke ActiveChatSession
         if (chat.creator && chat.recipient) {
             const isMeCreator = chat.creator.id === currentUserId;
             const targetUser = isMeCreator ? chat.recipient : chat.creator;
@@ -85,7 +89,9 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
             status: chat.status || "OFFLINE",
         };
 
-        setSelectedChat(mappedChat);
+        // Set Private, dan KOSONGKAN Group
+        setSelectedPrivateChat(mappedChat);
+        setSelectedGroupChat(null);
         setMobileView("chat");
     };
 
@@ -100,14 +106,16 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
             description: group.description,
         };
 
-        setSelectedChat(mappedGroup);
+        // Set Group, dan KOSONGKAN Private
+        setSelectedGroupChat(mappedGroup);
+        setSelectedPrivateChat(null);
         setMobileView("chat");
     };
 
     const handleStartMessage = (contact: Contact) => {
         const newChatData: ActivePrivateChat = {
-            id: contact.contactUser.id, // Temporary ID
-            conversationId: undefined, // Belum ada conversation ID
+            id: contact.contactUser.id,
+            conversationId: undefined,
             recipientId: contact.contactUser.id,
             name: contact.alias || contact.contactUser.fullName || contact.contactUser.username,
             avatar: contact.contactUser.avatarUrl || "",
@@ -115,8 +123,16 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
             status: UserStatus.ONLINE,
         };
 
-        setSelectedChat(newChatData);
+        // Set Private, dan KOSONGKAN Group
+        setSelectedPrivateChat(newChatData);
+        setSelectedGroupChat(null);
         setMobileView("chat");
+    };
+
+    const handleClearSelection = () => {
+        setSelectedPrivateChat(null);
+        setSelectedGroupChat(null);
+        setMobileView("list");
     };
 
     return (
@@ -125,28 +141,23 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
         >
             <HomeBackground />
 
-            {/* === LEFT SIDEBAR (CHAT LIST & NEW CHAT DRAWER) === */}
+            {/* === LEFT SIDEBAR === */}
             <aside
                 className={cn(
                     "flex-col h-full z-20 transition-all duration-300 border-r border-slate-200 dark:border-white/5 bg-white/60 dark:bg-[#0f1115]/80 backdrop-blur-2xl relative overflow-hidden",
                     mobileView === "list" ? "flex w-full md:w-112.5 lg:w-125" : "hidden md:flex md:w-112.5 lg:w-125",
                 )}
             >
-                {/* Header */}
                 <div className="px-5 py-4 flex items-center justify-between shrink-0">
                     <Application />
                     <ButtonGrouping setIsAddModalOpen={setIsAddModalOpen} setIsSettingsOpen={setIsSettingsOpen} />
                 </div>
 
-                {/* Search */}
                 <SearchInput placeholder="Search or start a new chat" />
-
-                {/* Stories / Status Bar */}
                 <StoriesView />
 
                 {/* Tabs Section */}
                 <Tabs.Root defaultValue="chats" className="flex-1 flex flex-col min-h-0 mt-4">
-                    {/* Tab List dengan Custom Underline Style */}
                     <Tabs.List className="flex items-center px-5 border-b border-slate-200 dark:border-white/5 gap-6">
                         <Tabs.Trigger
                             value="chats"
@@ -156,6 +167,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
                                 <MessageSquare className="w-3.5 h-3.5" />
                                 <span>Chats</span>
                             </div>
+
                             {/* Active Underline Indicator */}
                             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 scale-x-0 group-data-[state=active]:scale-x-100 transition-transform duration-200" />
                         </Tabs.Trigger>
@@ -168,21 +180,21 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
                                 <Users className="w-3.5 h-3.5" />
                                 <span>Groups</span>
                             </div>
+
                             {/* Active Underline Indicator */}
                             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 scale-x-0 group-data-[state=active]:scale-x-100 transition-transform duration-200" />
                         </Tabs.Trigger>
                     </Tabs.List>
 
-                    {/* Content Area - Tetap sama, menggunakan wrapper agar scroll mandiri */}
                     <div className="flex-1 overflow-hidden">
                         <Tabs.Content value="chats" className="h-full outline-none animate-in fade-in-50 duration-300">
                             <div className="h-full overflow-y-auto custom-scrollbar px-3 pt-4 pb-4">
-                                <AllChatView
+                                <AllPrivateChatList
                                     data={conversations}
                                     currentUserId={currentUserId}
                                     contacts={contacts}
-                                    handleChatSelect={handleChatSelect}
-                                    selectedChat={selectedChat}
+                                    handleChatSelect={handlePrivateChatSelect}
+                                    selectedPrivateChat={selectedPrivateChat}
                                 />
                             </div>
                         </Tabs.Content>
@@ -195,7 +207,6 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
                     </div>
                 </Tabs.Root>
 
-                {/* All My Contacts */}
                 <ContactListsView
                     isAddModalOpen={isAddModalOpen}
                     setIsAddModalOpen={setIsAddModalOpen}
@@ -209,27 +220,37 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
             {/* === CENTER MAIN CHAT === */}
             <ChatMainView
                 currentUserId={currentUserId}
-                selectedChat={selectedChat}
+                selectedChat={activeSession}
                 mobileView={mobileView}
                 showRightPanel={showRightPanel}
                 messages={messages}
                 inputText={inputText}
                 setMobileView={setMobileView}
-                setSelectedChat={setSelectedChat}
+                setSelectedChat={(chat) => {
+                    if (chat === null) handleClearSelection();
+                }}
                 setShowRightPanel={setShowRightPanel}
                 setInputText={setInputText}
                 onSendMessage={handleSendMessage}
-                messagesEndRef={messagesEndRef}
+                messagesEndRef={messagesEndRef as React.RefObject<HTMLDivElement>}
             />
 
-            {/* === RIGHT SIDEBAR (DETAILS OF 1 ON 1 Chat) === */}
-            {selectedChat &&
-                showRightPanel &&
-                (selectedChat.type === "group" ? (
-                    <GroupDirectoryView selectedChat={selectedChat} onClose={() => setShowRightPanel(false)} />
-                ) : (
-                    <ChatDirectoryView selectedChat={selectedChat} onClose={() => setShowRightPanel(false)} />
-                ))}
+            {/* === RIGHT SIDEBAR (DETAILS) === */}
+            {/* Logic Conditional Rendering berdasarkan State mana yang tidak null */}
+            {showRightPanel && (
+                <>
+                    {selectedGroupChat && (
+                        <GroupDirectoryView selectedChat={selectedGroupChat} onClose={() => setShowRightPanel(false)} />
+                    )}
+
+                    {selectedPrivateChat && (
+                        <ChatDirectoryView
+                            selectedChat={selectedPrivateChat}
+                            onClose={() => setShowRightPanel(false)}
+                        />
+                    )}
+                </>
+            )}
         </div>
     );
 }
