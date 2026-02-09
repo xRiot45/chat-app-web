@@ -14,8 +14,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { API_BASE_URL } from "@/configs/api-base-url";
+import { UserRoleGroup } from "@/enums/user-role-group-enum";
 import { ActiveGroupChat } from "@/features/chats/interfaces";
+import { getContacts } from "@/features/contacts/applications/queries/get-contact-query";
+import { Contact } from "@/features/contacts/interfaces/contact";
 import { cn } from "@/lib/utils";
+import { initialActionState } from "@/types/action-state";
 import {
     Bell,
     Check,
@@ -30,12 +34,15 @@ import {
     X,
 } from "lucide-react";
 import Image from "next/image";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useActionState, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { inviteMemberToGroupAction } from "../application/actions/invite-member-to-group";
 import { getMembersGroup } from "../application/queries/get-members-group-query";
 import { getProfileGroup } from "../application/queries/get-profile-group-query";
 import { Group, GroupMember, SharedMediaItem } from "../interfaces/group";
 
 interface GroupDirectoryViewProps {
+    currentUserId: string;
     selectedChat: ActiveGroupChat;
     onClose: () => void;
 }
@@ -48,23 +55,20 @@ const MOCK_MEDIA: SharedMediaItem[] = [
     { id: "5", type: "file", name: "Backend_Roadmap_2026.docx", size: "1.1 MB" },
 ];
 
-const MOCK_CONTACTS = Array.from({ length: 20 }).map((_, i) => ({
-    id: `contact-${i}`,
-    username: `user_candidate_${i}`,
-    fullName: `Candidate Member ${i + 1}`,
-    avatarUrl: `https://i.pravatar.cc/150?u=candidate_${i}`,
-    status: i % 3 === 0 ? "Online" : "Offline",
-}));
-
-export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ selectedChat, onClose }) => {
+export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ currentUserId, selectedChat, onClose }) => {
     const [groupData, setGroupData] = useState<Group | null>(null);
     const [members, setMembers] = useState<GroupMember[]>([]);
+    const [contacts, setContacts] = useState<Contact[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
 
     const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
 
+    const [state, formAction, isInviting] = useActionState(inviteMemberToGroupAction, initialActionState);
+
+    // --- Fetch Data ---
     useEffect(() => {
         const currentGroupId = selectedChat.groupId;
         if (!currentGroupId) return;
@@ -72,40 +76,83 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ selected
         const loadData = async () => {
             setIsLoading(true);
             try {
-                const [profileRes, membersRes] = await Promise.all([
+                const [profileRes, membersRes, contactsRes] = await Promise.all([
                     getProfileGroup(currentGroupId),
                     getMembersGroup(currentGroupId),
+                    getContacts(),
                 ]);
 
-                if (profileRes.success) setGroupData(profileRes?.data || null);
-                if (membersRes.success) setMembers(membersRes?.data || []);
+                if (profileRes.success) setGroupData(profileRes.data || null);
+                if (membersRes.success) setMembers(membersRes.data || []);
+                if (contactsRes.success) setContacts(contactsRes.data || []); // Set real contacts
             } catch (error) {
                 console.error("Failed to load group directory data:", error);
+                toast.error("Failed to load data");
             } finally {
                 setIsLoading(false);
             }
         };
 
         loadData();
-    }, [selectedChat.groupId]);
+    }, [selectedChat.groupId, refreshTrigger]);
 
-    // Filter contacts based on search
+    const canAddMembers = useMemo(() => {
+        const currentUserMember = members.find((m) => m.user.id === currentUserId);
+        if (!currentUserMember) return false;
+        const role = currentUserMember.role.toUpperCase();
+
+        return role === UserRoleGroup.OWNER || role === UserRoleGroup.ADMIN;
+    }, [members, currentUserId]);
+
+    // --- Handle Action Feedback ---
+    useEffect(() => {
+        if (state?.status === "success") {
+            toast.success(state.message || "Members invited successfully!");
+            setIsAddModalOpen(false);
+            setSelectedContactIds([]);
+            setRefreshTrigger((prev) => prev + 1);
+        } else if (state?.status === "error") {
+            toast.error(state.message || "Failed to invite members.");
+            if (state?.errors) {
+                console.error("Validation Errors:", state.errors);
+            }
+        }
+    }, [state]);
+
+    // --- Logic Filtering Contacts ---
     const filteredContacts = useMemo(() => {
-        return MOCK_CONTACTS.filter(
-            (contact) =>
-                contact.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                contact.username.toLowerCase().includes(searchQuery.toLowerCase()),
-        );
-    }, [searchQuery]);
+        // 1. Buat Set dari Member ID yang sudah ada di grup agar tidak invite ulang
+        const existingMemberIds = new Set(members.map((m) => m.user.id));
 
-    // Handle Checkbox Toggle
-    const toggleSelection = (id: string) => {
-        setSelectedContactIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+        return contacts.filter((contact) => {
+            // Ambil user dari object contact
+            const user = contact.contactUser;
+
+            // Cek apakah user sudah jadi member? Jika ya, skip.
+            if (existingMemberIds.has(user.id)) return false;
+
+            // Filter berdasarkan Search Query
+            const matchesSearch =
+                (user.fullName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (user.username || "").toLowerCase().includes(searchQuery.toLowerCase());
+
+            return matchesSearch;
+        });
+    }, [contacts, searchQuery, members]);
+
+    // --- Handlers ---
+
+    // Toggle Selection (Simpan User ID)
+    const toggleSelection = (userId: string) => {
+        setSelectedContactIds((prev) =>
+            prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId],
+        );
     };
 
-    // Handle Select All visible
+    // Toggle Select All
     const toggleSelectAll = () => {
-        const allVisibleIds = filteredContacts.map((c) => c.id);
+        // Ambil ID User dari filtered contacts
+        const allVisibleIds = filteredContacts.map((c) => c.contactUser.id);
         const allSelected = allVisibleIds.every((id) => selectedContactIds.includes(id));
 
         if (allSelected) {
@@ -116,7 +163,18 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ selected
         }
     };
 
-    if (isLoading) {
+    // Submit Handler
+    const handleInviteSubmit = () => {
+        if (selectedContactIds.length === 0) return;
+        const formData = new FormData();
+        formData.append("groupId", selectedChat.groupId);
+        selectedContactIds.forEach((id) => {
+            formData.append("memberIds", id);
+        });
+        formAction(formData);
+    };
+
+    if (isLoading && members.length === 0) {
         return (
             <aside className="h-full w-full lg:w-100 bg-white/95 dark:bg-[#0f1115]/95 backdrop-blur-xl flex items-center justify-center border-l border-slate-200 dark:border-white/5">
                 <div className="flex flex-col items-center gap-2 text-slate-400">
@@ -175,7 +233,7 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ selected
                     </h3>
 
                     <p className="text-sm font-medium text-indigo-500 dark:text-indigo-400 mb-3">
-                        {groupData?.membersCount || 0} Members
+                        {members.length} Members
                     </p>
 
                     <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300 max-w-[90%]">
@@ -189,140 +247,153 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ selected
                             Mute
                         </button>
 
-                        {/* --- ADD MEMBERS MODAL TRIGGER --- */}
-                        <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-                            <DialogTrigger asChild>
-                                <button className="flex-1 py-3 px-2 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors flex flex-col items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-300">
-                                    <UserPlus className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
-                                    Add Members
-                                </button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-5xl bg-white dark:bg-[#0f1115] border-slate-200 dark:border-white/10">
-                                <DialogHeader>
-                                    <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                                        <UserPlus className="w-5 h-5 text-indigo-500" />
-                                        Add Members to {groupData?.name}
-                                    </DialogTitle>
-                                    <DialogDescription className="text-slate-500 dark:text-slate-400">
-                                        Select contacts to add to this group. You can search by name or username.
-                                    </DialogDescription>
-                                </DialogHeader>
+                        {/* --- ADD MEMBERS MODAL TRIGGER (CONDITIONAL RENDERING) --- */}
+                        {canAddMembers && (
+                            <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+                                <DialogTrigger asChild>
+                                    <button className="flex-1 py-3 px-2 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors flex flex-col items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-300">
+                                        <UserPlus className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
+                                        Add Members
+                                    </button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-5xl bg-white dark:bg-[#0f1115] border-slate-200 dark:border-white/10">
+                                    <DialogHeader>
+                                        <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                                            <UserPlus className="w-5 h-5 text-indigo-500" />
+                                            Add Members to {groupData?.name}
+                                        </DialogTitle>
+                                        <DialogDescription className="text-slate-500 dark:text-slate-400">
+                                            Select contacts to add to this group.
+                                        </DialogDescription>
+                                    </DialogHeader>
 
-                                <div className="py-4 space-y-4">
-                                    {/* Search Input */}
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                        <Input
-                                            placeholder="Search contacts..."
-                                            value={searchQuery}
-                                            onChange={(e) => setSearchQuery(e.target.value)}
-                                            className="pl-9 bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 focus-visible:ring-indigo-500"
-                                        />
-                                    </div>
+                                    <div className="py-4 space-y-4">
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                            <Input
+                                                placeholder="Search contacts..."
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                className="pl-9 bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 focus-visible:ring-indigo-500"
+                                                disabled={isInviting}
+                                            />
+                                        </div>
 
-                                    {/* Selection Info & Select All */}
-                                    <div className="flex items-center justify-between text-sm px-1">
-                                        <span className="text-slate-500 dark:text-slate-400">
-                                            <span className="font-bold text-indigo-500">
-                                                {selectedContactIds.length}
-                                            </span>{" "}
-                                            selected
-                                        </span>
-                                        <button
-                                            onClick={toggleSelectAll}
-                                            className="text-indigo-500 hover:underline font-medium text-xs"
-                                        >
-                                            Select All Visible
-                                        </button>
-                                    </div>
+                                        <div className="flex items-center justify-between text-sm px-1">
+                                            <span className="text-slate-500 dark:text-slate-400">
+                                                <span className="font-bold text-indigo-500">
+                                                    {selectedContactIds.length}
+                                                </span>{" "}
+                                                selected
+                                            </span>
+                                            <button
+                                                onClick={toggleSelectAll}
+                                                disabled={isInviting}
+                                                className="text-indigo-500 hover:underline font-medium text-xs disabled:opacity-50"
+                                            >
+                                                Select All Visible
+                                            </button>
+                                        </div>
 
-                                    {/* Candidates List with Checkbox */}
-                                    <div className="border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden bg-slate-50/30 dark:bg-white/2">
-                                        <ScrollArea className="h-100">
-                                            <div className="p-2 grid grid-cols-1 md:grid-cols-2 gap-2">
-                                                {filteredContacts.length > 0 ? (
-                                                    filteredContacts.map((contact) => {
-                                                        const isSelected = selectedContactIds.includes(contact.id);
-                                                        return (
-                                                            <div
-                                                                key={contact.id}
-                                                                onClick={() => toggleSelection(contact.id)}
-                                                                className={cn(
-                                                                    "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all select-none",
-                                                                    isSelected
-                                                                        ? "bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/30"
-                                                                        : "bg-white dark:bg-white/5 border-transparent hover:border-slate-200 dark:hover:border-white/10",
-                                                                )}
-                                                            >
-                                                                <Checkbox
-                                                                    checked={isSelected}
-                                                                    onCheckedChange={() => toggleSelection(contact.id)}
-                                                                    className="data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
-                                                                />
-
-                                                                <Avatar className="w-10 h-10 border border-slate-100 dark:border-white/10">
-                                                                    <AvatarImage src={contact.avatarUrl} />
-                                                                    <AvatarFallback>
-                                                                        {contact.fullName.charAt(0)}
-                                                                    </AvatarFallback>
-                                                                </Avatar>
-
-                                                                <div className="flex-1 min-w-0">
-                                                                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
-                                                                        {contact.fullName}
-                                                                    </p>
-                                                                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                                                                        @{contact.username}
-                                                                    </p>
-                                                                </div>
-
-                                                                {/* Status Indicator (Optional) */}
+                                        <div className="border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden bg-slate-50/30 dark:bg-white/2">
+                                            <ScrollArea className="h-100">
+                                                <div className="p-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                    {filteredContacts.length > 0 ? (
+                                                        filteredContacts.map((contact) => {
+                                                            const user = contact.contactUser;
+                                                            const isSelected = selectedContactIds.includes(user.id);
+                                                            return (
                                                                 <div
+                                                                    key={contact.id}
+                                                                    onClick={() =>
+                                                                        !isInviting && toggleSelection(user.id)
+                                                                    }
                                                                     className={cn(
-                                                                        "w-2 h-2 rounded-full",
-                                                                        contact.status === "Online"
-                                                                            ? "bg-green-500"
-                                                                            : "bg-slate-300 dark:bg-slate-600",
+                                                                        "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all select-none",
+                                                                        isSelected
+                                                                            ? "bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/30"
+                                                                            : "bg-white dark:bg-white/5 border-transparent hover:border-slate-200 dark:hover:border-white/10",
+                                                                        isInviting && "opacity-50 pointer-events-none",
                                                                     )}
-                                                                />
-                                                            </div>
-                                                        );
-                                                    })
-                                                ) : (
-                                                    <div className="col-span-full py-10 flex flex-col items-center justify-center text-slate-400 gap-2">
-                                                        <Search className="w-8 h-8 opacity-20" />
-                                                        <p className="text-sm">
-                                                            No contacts found matching {searchQuery}
-                                                        </p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </ScrollArea>
-                                    </div>
-                                </div>
+                                                                >
+                                                                    <Checkbox
+                                                                        checked={isSelected}
+                                                                        onCheckedChange={() => toggleSelection(user.id)}
+                                                                        disabled={isInviting}
+                                                                        className="data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
+                                                                    />
 
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
-                                        Cancel
-                                    </Button>
-                                    <Button
-                                        className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2"
-                                        disabled={selectedContactIds.length === 0}
-                                        onClick={() => {
-                                            console.log("Adding members:", selectedContactIds);
-                                            setIsAddModalOpen(false);
-                                            setSelectedContactIds([]);
-                                        }}
-                                    >
-                                        <Check className="w-4 h-4" />
-                                        Add{" "}
-                                        {selectedContactIds.length > 0
-                                            ? `${selectedContactIds.length} Members`
-                                            : "Members"}
-                                    </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
+                                                                    <Avatar className="w-10 h-10 border border-slate-100 dark:border-white/10">
+                                                                        <AvatarImage
+                                                                            src={
+                                                                                user.avatarUrl
+                                                                                    ? `${API_BASE_URL}/api/public/${user.avatarUrl}`
+                                                                                    : ""
+                                                                            }
+                                                                        />
+                                                                        <AvatarFallback>
+                                                                            {user.fullName
+                                                                                ? user.fullName.charAt(0).toUpperCase()
+                                                                                : "?"}
+                                                                        </AvatarFallback>
+                                                                    </Avatar>
+
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
+                                                                            {user.fullName || user.username}
+                                                                        </p>
+                                                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                                                            @{user.username}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })
+                                                    ) : (
+                                                        <div className="col-span-full py-10 flex flex-col items-center justify-center text-slate-400 gap-2">
+                                                            <Search className="w-8 h-8 opacity-20" />
+                                                            <p className="text-sm">
+                                                                No contacts found matching {searchQuery}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </ScrollArea>
+                                        </div>
+                                    </div>
+
+                                    <DialogFooter>
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => setIsAddModalOpen(false)}
+                                            disabled={isInviting}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 min-w-35"
+                                            disabled={selectedContactIds.length === 0 || isInviting}
+                                            onClick={handleInviteSubmit}
+                                        >
+                                            {isInviting ? (
+                                                <>
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                    Adding...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Check className="w-4 h-4" />
+                                                    Add{" "}
+                                                    {selectedContactIds.length > 0
+                                                        ? `${selectedContactIds.length} Members`
+                                                        : "Members"}
+                                                </>
+                                            )}
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+                        )}
                     </div>
                 </div>
 
@@ -358,7 +429,7 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ selected
                                             <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
                                                 {item.user.fullName}
                                             </p>
-                                            {renderRoleBadge(item.role)}
+                                            {renderRoleBadge(item?.role)}
                                         </div>
                                         <p className="text-[11px] text-slate-500 truncate">@{item.user.username}</p>
                                     </div>
@@ -399,7 +470,7 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ selected
                         ))}
                     </div>
                 </div>
-                
+
                 {/* Danger Zone / Footer */}
                 <div className="pt-4 border-t border-slate-200 dark:border-white/10 pb-6 space-y-3">
                     <button className="w-full py-3 rounded-xl flex items-center justify-center gap-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors font-medium text-sm">

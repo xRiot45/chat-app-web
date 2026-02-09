@@ -240,7 +240,7 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
             {showRightPanel && (
                 <>
                     {selectedGroupChat && (
-                        <GroupDirectoryView selectedChat={selectedGroupChat} onClose={() => setShowRightPanel(false)} />
+                        <GroupDirectoryView currentUserId={currentUserId} selectedChat={selectedGroupChat} onClose={() => setShowRightPanel(false)} />
                     )}
 
                     {selectedPrivateChat && (
