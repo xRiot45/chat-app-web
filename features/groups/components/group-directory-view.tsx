@@ -121,17 +121,12 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ currentU
 
     // --- Logic Filtering Contacts ---
     const filteredContacts = useMemo(() => {
-        // 1. Buat Set dari Member ID yang sudah ada di grup agar tidak invite ulang
         const existingMemberIds = new Set(members.map((m) => m.user.id));
 
         return contacts.filter((contact) => {
-            // Ambil user dari object contact
             const user = contact.contactUser;
-
-            // Cek apakah user sudah jadi member? Jika ya, skip.
             if (existingMemberIds.has(user.id)) return false;
 
-            // Filter berdasarkan Search Query
             const matchesSearch =
                 (user.fullName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
                 (user.username || "").toLowerCase().includes(searchQuery.toLowerCase());
@@ -151,7 +146,6 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ currentU
 
     // Toggle Select All
     const toggleSelectAll = () => {
-        // Ambil ID User dari filtered contacts
         const allVisibleIds = filteredContacts.map((c) => c.contactUser.id);
         const allSelected = allVisibleIds.every((id) => selectedContactIds.includes(id));
 
@@ -166,11 +160,14 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ currentU
     // Submit Handler
     const handleInviteSubmit = () => {
         if (selectedContactIds.length === 0) return;
+
         const formData = new FormData();
         formData.append("groupId", selectedChat.groupId);
+
         selectedContactIds.forEach((id) => {
             formData.append("memberIds", id);
         });
+
         formAction(formData);
     };
 

@@ -22,9 +22,7 @@ export async function inviteMemberToGroupAction(prevState: ActionState, formData
         const response = await fetch(`${API_BASE_URL}/api/groups/invite`, {
             method: "POST",
             headers: headers,
-            body: JSON.stringify({
-                memberIds: validatedFields.data.memberIds,
-            }),
+            body: JSON.stringify(validatedFields.data),
         });
 
         const result = await response.json();
