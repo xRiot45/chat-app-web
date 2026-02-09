@@ -1,24 +1,36 @@
 import { renderRoleBadge } from "@/components/role-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { API_BASE_URL } from "@/configs/api-base-url";
 import { ActiveGroupChat } from "@/features/chats/interfaces";
 import { cn } from "@/lib/utils";
 import {
     Bell,
-    Download,
-    FileText,
+    Check,
     Image as ImageIcon,
     Loader2,
     LogOut,
     MoreVertical,
+    Search,
     ShieldAlert,
     UserPlus,
     Users,
     X,
 } from "lucide-react";
 import Image from "next/image";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { getMembersGroup } from "../application/queries/get-members-group-query";
 import { getProfileGroup } from "../application/queries/get-profile-group-query";
 import { Group, GroupMember, SharedMediaItem } from "../interfaces/group";
@@ -36,10 +48,22 @@ const MOCK_MEDIA: SharedMediaItem[] = [
     { id: "5", type: "file", name: "Backend_Roadmap_2026.docx", size: "1.1 MB" },
 ];
 
+const MOCK_CONTACTS = Array.from({ length: 20 }).map((_, i) => ({
+    id: `contact-${i}`,
+    username: `user_candidate_${i}`,
+    fullName: `Candidate Member ${i + 1}`,
+    avatarUrl: `https://i.pravatar.cc/150?u=candidate_${i}`,
+    status: i % 3 === 0 ? "Online" : "Offline",
+}));
+
 export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ selectedChat, onClose }) => {
     const [groupData, setGroupData] = useState<Group | null>(null);
     const [members, setMembers] = useState<GroupMember[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
+
+    const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+    const [searchQuery, setSearchQuery] = useState<string>("");
+    const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
 
     useEffect(() => {
         const currentGroupId = selectedChat.groupId;
@@ -64,6 +88,33 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ selected
 
         loadData();
     }, [selectedChat.groupId]);
+
+    // Filter contacts based on search
+    const filteredContacts = useMemo(() => {
+        return MOCK_CONTACTS.filter(
+            (contact) =>
+                contact.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                contact.username.toLowerCase().includes(searchQuery.toLowerCase()),
+        );
+    }, [searchQuery]);
+
+    // Handle Checkbox Toggle
+    const toggleSelection = (id: string) => {
+        setSelectedContactIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+    };
+
+    // Handle Select All visible
+    const toggleSelectAll = () => {
+        const allVisibleIds = filteredContacts.map((c) => c.id);
+        const allSelected = allVisibleIds.every((id) => selectedContactIds.includes(id));
+
+        if (allSelected) {
+            setSelectedContactIds((prev) => prev.filter((id) => !allVisibleIds.includes(id)));
+        } else {
+            const newIds = [...new Set([...selectedContactIds, ...allVisibleIds])];
+            setSelectedContactIds(newIds);
+        }
+    };
 
     if (isLoading) {
         return (
@@ -137,14 +188,141 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ selected
                             <Bell className="w-5 h-5 text-slate-500 dark:text-slate-400" />
                             Mute
                         </button>
-                        {/* <button className="flex-1 py-3 px-2 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors flex flex-col items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                            <Search className="w-5 h-5 text-slate-500 dark:text-slate-400" />
-                            Search
-                        </button> */}
-                        <button className="flex-1 py-3 px-2 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors flex flex-col items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-300">
-                            <UserPlus className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
-                            Add Members
-                        </button>
+
+                        {/* --- ADD MEMBERS MODAL TRIGGER --- */}
+                        <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+                            <DialogTrigger asChild>
+                                <button className="flex-1 py-3 px-2 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors flex flex-col items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-300">
+                                    <UserPlus className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
+                                    Add Members
+                                </button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-5xl bg-white dark:bg-[#0f1115] border-slate-200 dark:border-white/10">
+                                <DialogHeader>
+                                    <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                                        <UserPlus className="w-5 h-5 text-indigo-500" />
+                                        Add Members to {groupData?.name}
+                                    </DialogTitle>
+                                    <DialogDescription className="text-slate-500 dark:text-slate-400">
+                                        Select contacts to add to this group. You can search by name or username.
+                                    </DialogDescription>
+                                </DialogHeader>
+
+                                <div className="py-4 space-y-4">
+                                    {/* Search Input */}
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <Input
+                                            placeholder="Search contacts..."
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="pl-9 bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 focus-visible:ring-indigo-500"
+                                        />
+                                    </div>
+
+                                    {/* Selection Info & Select All */}
+                                    <div className="flex items-center justify-between text-sm px-1">
+                                        <span className="text-slate-500 dark:text-slate-400">
+                                            <span className="font-bold text-indigo-500">
+                                                {selectedContactIds.length}
+                                            </span>{" "}
+                                            selected
+                                        </span>
+                                        <button
+                                            onClick={toggleSelectAll}
+                                            className="text-indigo-500 hover:underline font-medium text-xs"
+                                        >
+                                            Select All Visible
+                                        </button>
+                                    </div>
+
+                                    {/* Candidates List with Checkbox */}
+                                    <div className="border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden bg-slate-50/30 dark:bg-white/2">
+                                        <ScrollArea className="h-100">
+                                            <div className="p-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                {filteredContacts.length > 0 ? (
+                                                    filteredContacts.map((contact) => {
+                                                        const isSelected = selectedContactIds.includes(contact.id);
+                                                        return (
+                                                            <div
+                                                                key={contact.id}
+                                                                onClick={() => toggleSelection(contact.id)}
+                                                                className={cn(
+                                                                    "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all select-none",
+                                                                    isSelected
+                                                                        ? "bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/30"
+                                                                        : "bg-white dark:bg-white/5 border-transparent hover:border-slate-200 dark:hover:border-white/10",
+                                                                )}
+                                                            >
+                                                                <Checkbox
+                                                                    checked={isSelected}
+                                                                    onCheckedChange={() => toggleSelection(contact.id)}
+                                                                    className="data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
+                                                                />
+
+                                                                <Avatar className="w-10 h-10 border border-slate-100 dark:border-white/10">
+                                                                    <AvatarImage src={contact.avatarUrl} />
+                                                                    <AvatarFallback>
+                                                                        {contact.fullName.charAt(0)}
+                                                                    </AvatarFallback>
+                                                                </Avatar>
+
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
+                                                                        {contact.fullName}
+                                                                    </p>
+                                                                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                                                        @{contact.username}
+                                                                    </p>
+                                                                </div>
+
+                                                                {/* Status Indicator (Optional) */}
+                                                                <div
+                                                                    className={cn(
+                                                                        "w-2 h-2 rounded-full",
+                                                                        contact.status === "Online"
+                                                                            ? "bg-green-500"
+                                                                            : "bg-slate-300 dark:bg-slate-600",
+                                                                    )}
+                                                                />
+                                                            </div>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <div className="col-span-full py-10 flex flex-col items-center justify-center text-slate-400 gap-2">
+                                                        <Search className="w-8 h-8 opacity-20" />
+                                                        <p className="text-sm">
+                                                            No contacts found matching {searchQuery}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </ScrollArea>
+                                    </div>
+                                </div>
+
+                                <DialogFooter>
+                                    <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2"
+                                        disabled={selectedContactIds.length === 0}
+                                        onClick={() => {
+                                            console.log("Adding members:", selectedContactIds);
+                                            setIsAddModalOpen(false);
+                                            setSelectedContactIds([]);
+                                        }}
+                                    >
+                                        <Check className="w-4 h-4" />
+                                        Add{" "}
+                                        {selectedContactIds.length > 0
+                                            ? `${selectedContactIds.length} Members`
+                                            : "Members"}
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 </div>
 
@@ -221,37 +399,7 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ selected
                         ))}
                     </div>
                 </div>
-
-                {/* Files Section */}
-                <div>
-                    <div className="flex items-center justify-between mb-4">
-                        <h4 className="font-bold text-xs text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                            <FileText className="w-3.5 h-3.5" /> Documents
-                        </h4>
-                    </div>
-                    <div className="space-y-2.5">
-                        {MOCK_MEDIA.filter((m) => m.type === "file").map((file) => (
-                            <div
-                                key={file.id}
-                                className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-indigo-50 dark:hover:bg-white/10 cursor-pointer transition-colors group border border-transparent hover:border-indigo-100 dark:hover:border-white/5"
-                            >
-                                <div className="p-2.5 bg-indigo-100 dark:bg-indigo-500/20 rounded-lg text-indigo-600 dark:text-indigo-300">
-                                    <FileText className="w-5 h-5" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium truncate text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">
-                                        {file.name}
-                                    </p>
-                                    <p className="text-[10px] text-slate-500">{file.size} • PDF</p>
-                                </div>
-                                <button className="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors">
-                                    <Download className="w-4 h-4" />
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
+                
                 {/* Danger Zone / Footer */}
                 <div className="pt-4 border-t border-slate-200 dark:border-white/10 pb-6 space-y-3">
                     <button className="w-full py-3 rounded-xl flex items-center justify-center gap-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors font-medium text-sm">
