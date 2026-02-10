@@ -12,7 +12,7 @@ import ChatMainView from "@/features/chats/views/chat-main-view";
 import { getContacts } from "@/features/contacts/applications/queries/get-contact-query";
 import { Contact } from "@/features/contacts/interfaces/contact";
 import ContactListsView from "@/features/contacts/views/contact-lists-view";
-import { GroupDirectoryView } from "@/features/groups/components/group-directory-view";
+import { GroupDirectoryView } from "@/features/groups/components/directory/group-directory-view";
 import MyGroupList from "@/features/groups/views/my-group-list";
 import SettingView from "@/features/settings/views/setting-view";
 import StoriesView from "@/features/stories/views/stories-view";
@@ -240,7 +240,11 @@ export default function HomeView({ token, currentUserId }: ChatClientPageProps) 
             {showRightPanel && (
                 <>
                     {selectedGroupChat && (
-                        <GroupDirectoryView currentUserId={currentUserId} selectedChat={selectedGroupChat} onClose={() => setShowRightPanel(false)} />
+                        <GroupDirectoryView
+                            currentUserId={currentUserId}
+                            selectedChat={selectedGroupChat}
+                            onClose={() => setShowRightPanel(false)}
+                        />
                     )}
 
                     {selectedPrivateChat && (
