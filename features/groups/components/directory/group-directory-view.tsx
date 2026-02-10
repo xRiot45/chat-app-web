@@ -140,6 +140,7 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ currentU
                     groupId={selectedChat.groupId}
                     members={members}
                     onRefresh={() => setRefreshTrigger((p) => p + 1)}
+                    currentUserId={currentUserId}
                 />
 
                 {/* Shared Media (Menggunakan mock data jika API belum tersedia) */}
