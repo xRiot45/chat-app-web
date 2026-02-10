@@ -136,7 +136,11 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ currentU
 
                 <hr className="border-slate-100 dark:border-white/5" />
 
-                <GroupMembersList members={members} />
+                <GroupMembersList
+                    groupId={selectedChat.groupId}
+                    members={members}
+                    onRefresh={() => setRefreshTrigger((p) => p + 1)}
+                />
 
                 {/* Shared Media (Menggunakan mock data jika API belum tersedia) */}
                 <GroupSharedMedia mediaItems={MOCK_MEDIA} />

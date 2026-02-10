@@ -1,4 +1,14 @@
 import { renderRoleBadge } from "@/components/role-badge";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
     DropdownMenu,
@@ -10,28 +20,38 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { API_BASE_URL } from "@/configs/api-base-url";
-import { MoreVertical, ShieldCheck, UserMinus, Users } from "lucide-react";
-import React from "react";
+import { cn } from "@/lib/utils";
+import { Loader2, MoreVertical, ShieldCheck, UserMinus, Users } from "lucide-react";
+import React, { useState } from "react";
+import { toast } from "sonner";
+import { kickMemberAction } from "../../application/actions/kick-member-action";
 import { GroupMember } from "../../interfaces/group";
 
 interface GroupMembersListProps {
+    groupId: string; // Tambahkan ini
     members: GroupMember[];
+    onRefresh: () => void; // Tambahkan ini
 }
 
-export const GroupMembersList: React.FC<GroupMembersListProps> = ({ members }) => {
+export const GroupMembersList: React.FC<GroupMembersListProps> = ({ groupId, members, onRefresh }) => {
     return (
         <div className="space-y-4">
-            {/* Section Header */}
             <h4 className="font-bold text-xs text-slate-400 uppercase tracking-wider flex items-center gap-2 mb-4">
                 <Users className="w-3.5 h-3.5" />
                 Members ({members.length})
             </h4>
 
-            {/* Scrollable Area */}
             <ScrollArea className="h-72 w-full pr-3">
                 <div className="space-y-1">
                     {members.length > 0 ? (
-                        members.map((member, idx) => <MemberItem key={`${member.user.id}-${idx}`} member={member} />)
+                        members.map((member, idx) => (
+                            <MemberItem
+                                key={`${member.user.id}-${idx}`}
+                                member={member}
+                                groupId={groupId}
+                                onRefresh={onRefresh}
+                            />
+                        ))
                     ) : (
                         <div className="text-center py-8 text-slate-400 text-sm italic">No members found.</div>
                     )}
@@ -43,74 +63,120 @@ export const GroupMembersList: React.FC<GroupMembersListProps> = ({ members }) =
 
 interface MemberItemProps {
     member: GroupMember;
+    groupId: string;
+    onRefresh: () => void;
 }
 
-const MemberItem: React.FC<MemberItemProps> = ({ member }) => {
+const MemberItem: React.FC<MemberItemProps> = ({ member, groupId, onRefresh }) => {
     const { user, role } = member;
+    const [isConfirmOpen, setIsConfirmOpen] = useState<boolean>(false);
+    const [isKicking, setIsKicking] = useState<boolean>(false);
+
+    const handleKick = async () => {
+        setIsKicking(true);
+        try {
+            const res = await kickMemberAction(groupId, user.id);
+            if (res.status === "success") {
+                toast.success(res.message);
+                onRefresh(); // Refresh daftar member di container utama
+            } else {
+                toast.error(res.message);
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("An unexpected error occurred.");
+        } finally {
+            setIsKicking(false);
+            setIsConfirmOpen(false);
+        }
+    };
 
     return (
-        <div className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 group transition-colors">
-            {/* Avatar Section */}
+        <div
+            className={cn(
+                "flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 group transition-all",
+                isKicking && "opacity-50 grayscale pointer-events-none",
+            )}
+        >
             <Avatar className="w-10 h-10 border border-slate-200 dark:border-white/10 shrink-0">
                 <AvatarImage
                     src={user.avatarUrl ? `${API_BASE_URL}/api/public/${user.avatarUrl}` : ""}
                     className="object-cover"
-                    alt={user.fullName || user.username}
                 />
-                <AvatarFallback className="bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300">
-                    {(user.fullName || user.username).charAt(0).toUpperCase()}
+                <AvatarFallback className="bg-slate-100 dark:bg-white/10">
+                    {user.fullName.charAt(0).toUpperCase()}
                 </AvatarFallback>
             </Avatar>
 
-            {/* Name and Role Section */}
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
-                        {user.fullName || user.username}
-                    </p>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{user.fullName}</p>
                     {renderRoleBadge(role)}
+                    {isKicking && <Loader2 className="w-3 h-3 animate-spin text-slate-400" />}
                 </div>
                 <p className="text-[11px] text-slate-500 truncate lowercase">@{user.username}</p>
             </div>
 
-            {/* Action Menu Trigger menggunakan Dropdown Shadcn */}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <button
                         type="button"
                         className="p-1.5 text-slate-400 opacity-0 group-hover:opacity-100 hover:text-indigo-500 transition-all rounded-lg hover:bg-white dark:hover:bg-white/10 outline-none"
-                        aria-label="Member Options"
                     >
                         <MoreVertical className="w-4 h-4" />
                     </button>
                 </DropdownMenuTrigger>
 
-                <DropdownMenuContent
-                    align="end"
-                    className="w-62 px-4 rounded-xl bg-white dark:bg-[#0f1115] border-slate-200 dark:border-white/10 shadow-xl"
-                >
-                    <DropdownMenuLabel className="text-xs text-slate-500 font-medium">Member Options</DropdownMenuLabel>
-                    <DropdownMenuSeparator className="bg-slate-100 dark:bg-white/5" />
+                <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl">
+                    <DropdownMenuLabel className="text-xs text-slate-500">Member Options</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
 
-                    {/* Menu: Change Role */}
-                    <DropdownMenuItem
-                        onClick={() => console.log("Change role logic for:", user.id)}
-                        className="flex items-center gap-2 cursor-pointer focus:bg-indigo-50 dark:focus:bg-indigo-500/10 focus:text-indigo-600 dark:focus:text-indigo-400 py-2.5"
-                    >
+                    <DropdownMenuItem className="flex items-center gap-2 cursor-pointer py-2.5">
                         <ShieldCheck className="w-4 h-4" />
-                        <span className="font-medium">Change Role</span>
+                        <span>Change Role</span>
                     </DropdownMenuItem>
 
-                    {/* Menu: Kick Member */}
+                    {/* Trigger Confirmation Dialog */}
                     <DropdownMenuItem
-                        onClick={() => console.log("Kick member logic for:", user.id)}
-                        className="flex items-center gap-2 cursor-pointer focus:bg-red-50 dark:focus:bg-red-500/10 text-red-500 focus:text-red-600 py-2.5"
+                        onClick={() => setIsConfirmOpen(true)}
+                        className="flex items-center gap-2 cursor-pointer text-red-500 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-500/10 py-2.5"
                     >
                         <UserMinus className="w-4 h-4" />
-                        <span className="font-medium">Kick Member</span>
+                        <span>Kick Member</span>
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* CONFIRMATION DIALOG */}
+            <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+                <AlertDialogContent className="rounded-2xl border-slate-200 dark:border-white/10">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will remove{" "}
+                            <span className="font-bold text-slate-900 dark:text-white">@{user.username}</span> from the
+                            group. They will no longer be able to see new messages.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => {
+                                e.preventDefault();
+                                handleKick();
+                            }}
+                            className="bg-red-500 hover:bg-red-600 text-white rounded-xl gap-2"
+                        >
+                            {isKicking ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <UserMinus className="w-4 h-4" />
+                            )}
+                            Kick Member
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };
