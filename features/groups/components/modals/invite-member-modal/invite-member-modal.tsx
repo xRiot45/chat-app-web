@@ -14,7 +14,7 @@ import { initialActionState } from "@/types/action-state";
 import { Check, Loader2, Search, UserPlus } from "lucide-react";
 import React, { useActionState, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { inviteMemberToGroupAction } from "../../../application/actions/invite-member-to-group";
+import { inviteMemberToGroupAction } from "../../../application/actions/invite-member-to-group-action";
 import { ContactSelectionItem } from "./contact-selection-item";
 
 interface InviteMemberModalProps {

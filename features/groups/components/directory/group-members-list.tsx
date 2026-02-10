@@ -10,6 +10,15 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -19,12 +28,15 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { API_BASE_URL } from "@/configs/api-base-url";
 import { UserRoleGroup } from "@/enums/user-role-group-enum";
 import { cn } from "@/lib/utils";
-import { Loader2, MoreVertical, ShieldCheck, UserMinus, Users } from "lucide-react";
+import { initialActionState } from "@/types/action-state";
+import { Check, Loader2, MoreVertical, ShieldCheck, UserMinus, Users } from "lucide-react";
 import React, { useState } from "react";
 import { toast } from "sonner";
+import { changeRoleMemberAction } from "../../application/actions/change-role-member-action";
 import { kickMemberAction } from "../../application/actions/kick-member-action";
 import { GroupMember } from "../../interfaces/group";
 
@@ -37,7 +49,6 @@ interface GroupMembersListProps {
 
 export const GroupMembersList: React.FC<GroupMembersListProps> = ({ groupId, members, onRefresh, currentUserId }) => {
     const currentUserRole = members.find((m) => m.user.id === currentUserId)?.role || UserRoleGroup.MEMBER;
-    console.log(currentUserRole);
 
     return (
         <div className="space-y-4">
@@ -79,17 +90,16 @@ interface MemberItemProps {
 const MemberItem: React.FC<MemberItemProps> = ({ member, groupId, onRefresh, currentUserRole, currentUserId }) => {
     const { user, role } = member;
     const [isConfirmOpen, setIsConfirmOpen] = useState<boolean>(false);
+    const [isRoleModalOpen, setIsRoleModalOpen] = useState<boolean>(false);
     const [isKicking, setIsKicking] = useState<boolean>(false);
+    const [isUpdatingRole, setIsUpdatingRole] = useState<boolean>(false);
+    const [selectedRole, setSelectedRole] = useState<string>(role.toUpperCase());
 
     const isAdminOrOwner =
         currentUserRole.toUpperCase() === UserRoleGroup.OWNER || currentUserRole.toUpperCase() === UserRoleGroup.ADMIN;
 
     const isNotSelf = user.id !== currentUserId;
     const showActionMenu = isAdminOrOwner && isNotSelf;
-
-    console.log("Role User Login:", currentUserRole.toUpperCase());
-    console.log("Enum Owner:", UserRoleGroup.OWNER);
-    console.log("Apakah Sama?:", currentUserRole.toUpperCase() === UserRoleGroup.OWNER);
 
     const handleKick = async () => {
         setIsKicking(true);
@@ -107,6 +117,32 @@ const MemberItem: React.FC<MemberItemProps> = ({ member, groupId, onRefresh, cur
         } finally {
             setIsKicking(false);
             setIsConfirmOpen(false);
+        }
+    };
+
+    const handleUpdateRole = async () => {
+        setIsUpdatingRole(true);
+
+        const formData = new FormData();
+        formData.append("groupId", groupId);
+        formData.append("memberId", user.id);
+        formData.append("role", selectedRole);
+
+        try {
+            const res = await changeRoleMemberAction(initialActionState, formData);
+
+            if (res.status === "success") {
+                toast.success(res.message);
+                onRefresh(); // Refresh list member agar badge berubah
+                setIsRoleModalOpen(false);
+            } else {
+                toast.error(res.message);
+            }
+        } catch (error) {
+            console.error("UPDATE_ROLE_ERROR:", error);
+            toast.error("Failed to connect to server");
+        } finally {
+            setIsUpdatingRole(false);
         }
     };
 
@@ -152,7 +188,10 @@ const MemberItem: React.FC<MemberItemProps> = ({ member, groupId, onRefresh, cur
                         <DropdownMenuLabel className="text-xs text-slate-500">Member Options</DropdownMenuLabel>
                         <DropdownMenuSeparator />
 
-                        <DropdownMenuItem className="flex items-center gap-2 cursor-pointer py-2.5">
+                        <DropdownMenuItem
+                            onClick={() => setIsRoleModalOpen(true)}
+                            className="flex items-center gap-2 cursor-pointer py-2.5"
+                        >
                             <ShieldCheck className="w-4 h-4" />
                             <span>Change Role</span>
                         </DropdownMenuItem>
@@ -167,6 +206,62 @@ const MemberItem: React.FC<MemberItemProps> = ({ member, groupId, onRefresh, cur
                     </DropdownMenuContent>
                 </DropdownMenu>
             )}
+
+            <Dialog open={isRoleModalOpen} onOpenChange={setIsRoleModalOpen}>
+                <DialogContent className="sm:max-w-xl rounded-2xl dark:bg-[#0D0D0F]">
+                    <DialogHeader>
+                        <DialogTitle>Change Member Role</DialogTitle>
+                        <DialogDescription>
+                            Select a new role for <span className="font-bold">@{user.username}</span>. Roles define what
+                            permissions the user has in this group.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="py-4">
+                        <Select defaultValue={selectedRole} onValueChange={setSelectedRole}>
+                            <SelectTrigger className="w-full rounded-md border-slate-200 dark:border-white/10 h-12 py-5">
+                                <SelectValue placeholder="Select a role" />
+                            </SelectTrigger>
+
+                            <SelectContent className="rounded-md bg-white dark:bg-[#0f1115] border-slate-200 dark:border-white/10 shadow-xl">
+                                {/* Mapping Enum UserRoleGroup */}
+                                {Object.values(UserRoleGroup).map((roleValue) => (
+                                    <SelectItem
+                                        key={roleValue}
+                                        value={roleValue}
+                                        className="rounded-lg focus:bg-indigo-50 p-4 dark:focus:bg-indigo-500/10 focus:text-indigo-600 dark:focus:text-indigo-400 cursor-pointer"
+                                    >
+                                        <span className="capitalize">{roleValue.toLowerCase()}</span>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <DialogFooter className="gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsRoleModalOpen(false)}
+                            className="rounded-md"
+                            disabled={isUpdatingRole}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleUpdateRole}
+                            disabled={isUpdatingRole || selectedRole === role.toUpperCase()}
+                            className="rounded-md bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
+                        >
+                            {isUpdatingRole ? (
+                                <Loader2 className="w-4 h-4 animate-spin mr-0" />
+                            ) : (
+                                <Check className="w-4 h-4 mr-0" />
+                            )}
+                            Update Role
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* ALERT DIALOG (Tetap di luar agar tidak terpengaruh menu) */}
             <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
