@@ -9,16 +9,15 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Loader2, LogOut, ShieldAlert } from "lucide-react";
+import { AlertTriangle, Loader2, LogOut } from "lucide-react";
 import React, { useState } from "react";
 
 interface GroupDangerZoneProps {
     groupName: string;
     onLeaveGroup: () => Promise<void>;
-    onReportGroup: () => void;
 }
 
-export const GroupDangerZone: React.FC<GroupDangerZoneProps> = ({ groupName, onLeaveGroup, onReportGroup }) => {
+export const GroupDangerZone: React.FC<GroupDangerZoneProps> = ({ groupName, onLeaveGroup }) => {
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     const [isPending, setIsPending] = useState(false);
 
@@ -40,20 +39,6 @@ export const GroupDangerZone: React.FC<GroupDangerZoneProps> = ({ groupName, onL
             </div>
 
             <div className="space-y-2">
-                {/* Report Group */}
-                <button
-                    type="button"
-                    onClick={onReportGroup}
-                    className={cn(
-                        "w-full py-3 px-4 rounded-xl flex items-center gap-3 transition-all",
-                        "text-slate-600 dark:text-slate-400 font-medium text-sm",
-                        "hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-200",
-                    )}
-                >
-                    <ShieldAlert className="w-4.5 h-4.5" />
-                    <span>Report Group</span>
-                </button>
-
                 {/* Leave Group Button */}
                 <button
                     type="button"

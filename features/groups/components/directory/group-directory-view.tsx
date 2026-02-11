@@ -101,9 +101,6 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ currentU
         }
     };
 
-    const handleReportGroup = () => {
-        toast.warning("Report group feature coming soon");
-    };
 
     // --- Loading View ---
     if (isLoading && refreshTrigger === 0) {
@@ -161,7 +158,6 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ currentU
                 <GroupDangerZone
                     groupName={groupData?.name || selectedChat.name}
                     onLeaveGroup={handleLeaveGroup}
-                    onReportGroup={handleReportGroup}
                 />
             </div>
 
