@@ -13,6 +13,7 @@ import { getMembersGroup } from "../../application/queries/get-members-group-que
 import { getProfileGroup } from "../../application/queries/get-profile-group-query";
 import { Group, GroupMember, SharedMediaItem } from "../../interfaces/group";
 import { InviteMemberModal } from "../modals/invite-member-modal/invite-member-modal";
+import { NewGroupModal } from "../new-group-modal";
 import { GroupDangerZone } from "./group-danger-zone";
 import { GroupMembersList } from "./group-members-list";
 import { GroupProfileInfo } from "./group-profile-info";
@@ -42,6 +43,7 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ currentU
 
     // --- UI State ---
     const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+    const [isOpenModalUpdate, setIsOpenModalUpdate] = useState<boolean>(false);
 
     // --- Fetching Logic ---
     useEffect(() => {
@@ -101,7 +103,6 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ currentU
         }
     };
 
-
     // --- Loading View ---
     if (isLoading && refreshTrigger === 0) {
         return (
@@ -127,7 +128,7 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ currentU
                 <span className="text-slate-800 dark:text-white flex items-center gap-2">Group Info</span>
                 <button
                     onClick={onClose}
-                    className="ml-auto lg:hidden p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                    className="ml-auto p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
                 >
                     <X className="w-6 h-6 text-slate-500" />
                 </button>
@@ -141,6 +142,7 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ currentU
                     membersCount={members.length}
                     canAddMembers={canAddMembers}
                     onInviteClick={() => setIsAddModalOpen(true)}
+                    onUpdateClick={() => setIsOpenModalUpdate(true)}
                 />
 
                 <hr className="border-slate-100 dark:border-white/5" />
@@ -152,13 +154,9 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ currentU
                     currentUserId={currentUserId}
                 />
 
-                {/* Shared Media (Menggunakan mock data jika API belum tersedia) */}
                 <GroupSharedMedia mediaItems={MOCK_MEDIA} />
 
-                <GroupDangerZone
-                    groupName={groupData?.name || selectedChat.name}
-                    onLeaveGroup={handleLeaveGroup}
-                />
+                <GroupDangerZone groupName={groupData?.name || selectedChat.name} onLeaveGroup={handleLeaveGroup} />
             </div>
 
             {/* Modals */}
@@ -171,6 +169,8 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ currentU
                 existingMemberIds={existingMemberIds}
                 onSuccess={() => setRefreshTrigger((prev) => prev + 1)}
             />
+
+            <NewGroupModal isOpen={isOpenModalUpdate} onClose={() => setIsOpenModalUpdate(false)} data={groupData} />
         </aside>
     );
 };
