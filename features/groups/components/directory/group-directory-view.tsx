@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Loader2, X } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { leaveGroupAction } from "../../application/actions/leave-group-action";
 import { getMembersGroup } from "../../application/queries/get-members-group-query";
 import { getProfileGroup } from "../../application/queries/get-profile-group-query";
 import { Group, GroupMember, SharedMediaItem } from "../../interfaces/group";
@@ -85,8 +86,19 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ currentU
     }, [members]);
 
     // --- Handlers ---
-    const handleLeaveGroup = () => {
-        toast.info("Leave group feature coming soon");
+    const handleLeaveGroup = async () => {
+        const currentGroupId = selectedChat.groupId;
+        if (!currentGroupId) return;
+
+        try {
+            await leaveGroupAction(currentGroupId);
+            onClose();
+            setRefreshTrigger((prev) => prev + 1);
+            toast.success("You have left the group");
+        } catch (error) {
+            console.error("Failed to leave group:", error);
+            toast.error("Failed to leave group. Please try again.");
+        }
     };
 
     const handleReportGroup = () => {
