@@ -16,7 +16,6 @@ interface GroupProfileInfoProps {
 
 export const GroupProfileInfo: React.FC<GroupProfileInfoProps> = ({
     groupData,
-    selectedChatAvatar,
     membersCount,
     canAddMembers,
     onInviteClick,
@@ -30,10 +29,10 @@ export const GroupProfileInfo: React.FC<GroupProfileInfoProps> = ({
             <div className={cn("relative group", canAddMembers ? "cursor-pointer" : "cursor-default")}>
                 <Avatar className="w-24 h-24 mb-4 ring-4 ring-slate-100 dark:ring-white/5 shadow-xl transition-transform group-hover:scale-105">
                     <AvatarImage
-                        src={
-                            groupData?.iconUrl ? `${API_BASE_URL}/api/public/${groupData.iconUrl}` : selectedChatAvatar
-                        }
+                        src={`${API_BASE_URL}/api/public${groupData?.iconUrl}`}
                         className="object-cover"
+                        alt="Group Icon"
+                        crossOrigin="anonymous"
                     />
                     <AvatarFallback className="bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-200 text-2xl font-bold">
                         {groupInitial}

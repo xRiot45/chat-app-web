@@ -5,10 +5,9 @@ import { updateGroupSchema } from "../../schemas/update-group-schema";
 
 export async function updateGroupAction(
     prevState: ActionState,
-    groupId: string, // Diambil dari argumen kedua sesuai definisi Anda
+    groupId: string,
     formData: FormData,
 ): Promise<ActionState> {
-    // 1. Validasi Input Dasar
     const validatedFields = updateGroupSchema.safeParse({
         name: formData.get("name"),
         description: formData.get("description"),
@@ -23,7 +22,7 @@ export async function updateGroupAction(
     }
 
     try {
-        const headers = await getAuthHeaders();
+        const headers = await getAuthHeaders(true);
         const response = await fetch(`${API_BASE_URL}/api/groups/${groupId}`, {
             method: "PATCH",
             headers: headers,
@@ -31,6 +30,7 @@ export async function updateGroupAction(
         });
 
         const result = await response.json();
+        console.log(response);
 
         if (!response.ok) {
             return {

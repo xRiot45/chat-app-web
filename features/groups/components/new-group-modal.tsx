@@ -47,6 +47,7 @@ export function NewGroupModal({ isOpen, onClose, data }: NewGroupModalProps) {
     // 2. States
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [hasSubmitted, setHasSubmitted] = useState<boolean>(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const hasNotified = useRef(false);
 
@@ -66,27 +67,32 @@ export function NewGroupModal({ isOpen, onClose, data }: NewGroupModalProps) {
                 name: data.name,
                 description: data.description || "",
             });
+
             if (data.iconUrl) {
-                setPreviewImage(`${API_BASE_URL}/api/public/${data.iconUrl}`);
+                const cacheBuster = `?t=${new Date(data.updatedAt).getTime()}`;
+                setPreviewImage(`${API_BASE_URL}/api/public${data.iconUrl}${cacheBuster}`);
             }
-        } else if (!isOpen) {
-            form.reset({ name: "", description: "" });
-            setPreviewImage(null);
-            setSelectedFile(null);
-            hasNotified.current = false;
         }
     }, [isOpen, isEditMode, data, form]);
 
+    useEffect(() => {
+        if (!isOpen) {
+            setHasSubmitted(false);
+            hasNotified.current = false;
+        }
+    }, [isOpen]);
+
     // 5. Action Response Handler
     useEffect(() => {
-        if (!isOpen) return;
+        if (!isOpen || !hasSubmitted) return;
 
         if (state.status === "success" && !hasNotified.current) {
             toast.success(state.message);
             hasNotified.current = true;
 
             const timer = setTimeout(() => {
-                onClose(true); // Trigger refresh di parent
+                onClose(true);
+                setHasSubmitted(false);
             }, 100);
             return () => clearTimeout(timer);
         }
@@ -94,13 +100,20 @@ export function NewGroupModal({ isOpen, onClose, data }: NewGroupModalProps) {
         if (state.status === "error" && !hasNotified.current) {
             toast.error(state.message);
             hasNotified.current = true;
+            setHasSubmitted(false);
         }
-    }, [state, isOpen, onClose]);
+    }, [state, isOpen, onClose, hasSubmitted]);
 
     // 6. Handlers
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
+
         if (file) {
+            if (file.size > 2 * 1024 * 1024) {
+                toast.error("Image is too large. Max size is 2MB.");
+                return;
+            }
+
             setSelectedFile(file);
             const reader = new FileReader();
             reader.onloadend = () => {
@@ -112,16 +125,15 @@ export function NewGroupModal({ isOpen, onClose, data }: NewGroupModalProps) {
 
     const onSubmit = async (values: CreateGroupValues) => {
         hasNotified.current = false;
+        setHasSubmitted(true);
 
         startTransition(() => {
             const formData = new FormData();
             formData.append("name", values.name);
             formData.append("description", values.description || "");
-
             if (selectedFile) {
                 formData.append("icon", selectedFile);
             }
-
             formAction(formData);
         });
     };
@@ -183,6 +195,7 @@ export function NewGroupModal({ isOpen, onClose, data }: NewGroupModalProps) {
                                             alt="Group Icon"
                                             className="w-full h-full object-cover"
                                             unoptimized
+                                            crossOrigin="anonymous"
                                         />
                                     ) : (
                                         <Camera className="w-10 h-10 text-slate-400 group-hover:text-indigo-500 transition-colors" />

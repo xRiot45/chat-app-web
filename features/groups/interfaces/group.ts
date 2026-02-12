@@ -8,6 +8,7 @@ export interface Group {
     iconUrl?: string;
     owner?: UserShortInfo;
     membersCount: number;
+    updatedAt: Date;
 }
 
 export interface GroupMember {
