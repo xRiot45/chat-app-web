@@ -9,6 +9,7 @@ import { Loader2, X } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { leaveGroupAction } from "../../application/actions/leave-group-action";
+import { removeGroupAction } from "../../application/actions/remove-group-action";
 import { getMembersGroup } from "../../application/queries/get-members-group-query";
 import { getProfileGroup } from "../../application/queries/get-profile-group-query";
 import { Group, GroupMember, SharedMediaItem } from "../../interfaces/group";
@@ -103,6 +104,29 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ currentU
         }
     };
 
+    const handleRemoveGroup = async () => {
+        const currentGroupId = selectedChat.groupId;
+        if (!currentGroupId) return;
+
+        try {
+            await removeGroupAction(currentGroupId);
+            onClose();
+            setRefreshTrigger((prev) => prev + 1);
+            toast.success("Delete group successfully");
+        } catch (error) {
+            console.error("Failed to delete group:", error);
+            toast.error("Failed to delete group. Please try again.");
+        }
+    };
+
+    const isAdminOrOwner = useMemo(() => {
+        const currentUserMember = members.find((m) => m.user.id === currentUserId);
+        if (!currentUserMember) return false;
+
+        const role = currentUserMember.role.toUpperCase();
+        return role === UserRoleGroup.OWNER || role === UserRoleGroup.ADMIN;
+    }, [members, currentUserId]);
+
     // --- Loading View ---
     if (isLoading && refreshTrigger === 0) {
         return (
@@ -156,7 +180,12 @@ export const GroupDirectoryView: React.FC<GroupDirectoryViewProps> = ({ currentU
 
                 <GroupSharedMedia mediaItems={MOCK_MEDIA} />
 
-                <GroupDangerZone groupName={groupData?.name || selectedChat.name} onLeaveGroup={handleLeaveGroup} />
+                <GroupDangerZone
+                    groupName={groupData?.name || selectedChat.name}
+                    isAdminOrOwner={isAdminOrOwner}
+                    onLeaveGroup={handleLeaveGroup}
+                    onRemoveGroup={handleRemoveGroup}
+                />
             </div>
 
             {/* Modals */}
