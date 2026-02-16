@@ -1,8 +1,9 @@
 import { User } from "@/features/users/interfaces";
 
 export interface CreateMessage {
-    recipientId: string;
     content: string;
+    recipientId?: string;
+    groupId?: string;
 }
 
 export interface Message {
@@ -16,6 +17,8 @@ export interface Message {
     readAt?: string;
     isPending?: boolean;
     isRead?: boolean;
+    groupId?: string;
+    recipientId?: string;
 }
 
 export interface LastMessage {

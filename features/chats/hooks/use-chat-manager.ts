@@ -1,14 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { getMessagesQuery } from "../application/queries/get-message-query";
 import { getRecentMessagesQuery } from "../application/queries/get-recent-message-query";
-import { ActivePrivateChat } from "../interfaces";
 import { ChatConversation } from "../interfaces/message-interface";
 import { useChatSocket } from "./use-chat-socket";
+
+interface ActiveChatPayload {
+    id?: string;
+    recipientId?: string;
+    conversationId?: string;
+    groupId?: string;
+}
 
 interface UseChatManagerProps {
     token: string;
     currentUserId: string;
-    selectedChat: ActivePrivateChat | null;
+    selectedChat: ActiveChatPayload | null;
 }
 
 export const useChatManager = ({ token, currentUserId, selectedChat }: UseChatManagerProps) => {
@@ -19,7 +25,7 @@ export const useChatManager = ({ token, currentUserId, selectedChat }: UseChatMa
     const { messages, sendMessage, setMessages, socket, markMessageAsRead } = useChatSocket({
         token,
         currentUserId,
-        activeRecipientId: selectedChat?.recipientId,
+        activeChat: selectedChat || {},
     });
 
     // --- 1. INITIAL LOAD: Fetch Recent Conversations ---
@@ -43,7 +49,11 @@ export const useChatManager = ({ token, currentUserId, selectedChat }: UseChatMa
         const handleSidebarUpdate = (newMessage: any) => {
             setConversations((prev) => {
                 const updatedList = [...prev];
-                const existingIndex = updatedList.findIndex((c) => c.id === newMessage.conversationId);
+                const existingIndex = updatedList.findIndex(
+                    (c) =>
+                        (newMessage.conversationId && c.id === newMessage.conversationId) ||
+                        (newMessage.groupId && c.id === newMessage.groupId),
+                );
 
                 if (existingIndex !== -1) {
                     const chatToUpdate = { ...updatedList[existingIndex] };
@@ -62,6 +72,7 @@ export const useChatManager = ({ token, currentUserId, selectedChat }: UseChatMa
                     updatedList.splice(existingIndex, 1);
                     updatedList.unshift(chatToUpdate);
                 }
+
                 return updatedList;
             });
         };
@@ -135,13 +146,19 @@ export const useChatManager = ({ token, currentUserId, selectedChat }: UseChatMa
     const onSendMessage = (content: string) => {
         if (!selectedChat) return;
 
-        sendMessage(content, selectedChat.recipientId);
+        sendMessage({
+            content,
+            recipientId: selectedChat.recipientId,
+            groupId: selectedChat.groupId,
+        });
 
-        // Optimistic Update Sidebar
         setConversations((prev) => {
             const updatedList = [...prev];
             const chatIndex = updatedList.findIndex(
-                (c) => c.id === selectedChat.conversationId || c.recipient?.id === selectedChat.recipientId,
+                (c) =>
+                    (selectedChat.conversationId && c.id === selectedChat.conversationId) ||
+                    (selectedChat.groupId && c.id === selectedChat.groupId) ||
+                    (selectedChat.recipientId && c.recipient?.id === selectedChat.recipientId),
             );
 
             const lastMsg = {
