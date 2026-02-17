@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+// Sesuaikan path import ini
 import { getMessagesQuery } from "../application/queries/get-message-query";
 import { getRecentMessagesQuery } from "../application/queries/get-recent-message-query";
 import { ChatConversation } from "../interfaces/message-interface";
@@ -21,7 +22,6 @@ export const useChatManager = ({ token, currentUserId, selectedChat }: UseChatMa
     const [conversations, setConversations] = useState<ChatConversation[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // Inisialisasi Socket Hook
     const { messages, sendMessage, setMessages, socket, markMessageAsRead } = useChatSocket({
         token,
         currentUserId,
@@ -72,7 +72,7 @@ export const useChatManager = ({ token, currentUserId, selectedChat }: UseChatMa
                     updatedList.splice(existingIndex, 1);
                     updatedList.unshift(chatToUpdate);
                 }
-
+                // Optional: Fetch ulang jika conversation belum ada di list
                 return updatedList;
             });
         };
@@ -112,15 +112,26 @@ export const useChatManager = ({ token, currentUserId, selectedChat }: UseChatMa
     // --- 3. SELECTION LOGIC: Load Messages when Chat selected ---
     useEffect(() => {
         const loadMessages = async () => {
-            if (!selectedChat?.recipientId) return;
+            if (!selectedChat) return;
+            // Harus ada recipientId atau groupId
+            if (!selectedChat.recipientId && !selectedChat.groupId) return;
 
-            setMessages([]);
+            setMessages([]); // Reset state pesan
+
             try {
-                const fetchedMessages = await getMessagesQuery(selectedChat.recipientId);
+                const fetchedMessages = await getMessagesQuery({
+                    recipientId: selectedChat.recipientId,
+                    groupId: selectedChat.groupId,
+                    limit: 50,
+                    offset: 0,
+                });
+
                 setMessages(fetchedMessages);
 
-                if (selectedChat.conversationId) {
+                // Mark as read logic (hanya untuk 1-on-1)
+                if (selectedChat.conversationId && selectedChat.recipientId && !selectedChat.groupId) {
                     markMessageAsRead(selectedChat.conversationId, selectedChat.recipientId);
+
                     setConversations((prev) =>
                         prev.map((chat) =>
                             chat.id === selectedChat.conversationId ? { ...chat, unreadCount: 0 } : chat,
@@ -133,7 +144,13 @@ export const useChatManager = ({ token, currentUserId, selectedChat }: UseChatMa
         };
 
         loadMessages();
-    }, [selectedChat?.recipientId, selectedChat?.conversationId, setMessages, markMessageAsRead]);
+    }, [
+        selectedChat?.recipientId,
+        selectedChat?.conversationId,
+        selectedChat?.groupId,
+        setMessages,
+        markMessageAsRead,
+    ]);
 
     // --- 4. UX: Auto Scroll ---
     useEffect(() => {
@@ -142,40 +159,54 @@ export const useChatManager = ({ token, currentUserId, selectedChat }: UseChatMa
         }
     }, [messages]);
 
-    // --- 5. ACTION: Wrapped Send Message ---
-    const onSendMessage = (content: string) => {
+    // --- 5. ACTION: Wrapped Send Message (PERBAIKAN UTAMA DISINI) ---
+    const onSendMessage = async (content: string) => {
+        // Ubah jadi async
         if (!selectedChat) return;
 
-        sendMessage({
-            content,
-            recipientId: selectedChat.recipientId,
-            groupId: selectedChat.groupId,
-        });
-
-        setConversations((prev) => {
-            const updatedList = [...prev];
-            const chatIndex = updatedList.findIndex(
-                (c) =>
-                    (selectedChat.conversationId && c.id === selectedChat.conversationId) ||
-                    (selectedChat.groupId && c.id === selectedChat.groupId) ||
-                    (selectedChat.recipientId && c.recipient?.id === selectedChat.recipientId),
-            );
-
-            const lastMsg = {
-                id: `temp-${Date.now()}`,
+        try {
+            // 1. Kirim pesan dan tunggu balasan ACK (berisi pesan yang sudah disimpan di DB)
+            const sentMessage = await sendMessage({
                 content,
-                createdAt: new Date(),
-                senderId: currentUserId,
-                isRead: false,
-            };
+                recipientId: selectedChat.recipientId,
+                groupId: selectedChat.groupId,
+            });
 
-            if (chatIndex !== -1) {
-                const activeChat = { ...updatedList[chatIndex], lastMessage: lastMsg };
-                updatedList.splice(chatIndex, 1);
-                updatedList.unshift(activeChat);
+            // 2. MANUAL UPDATE UI SENDER
+            // Karena backend 1-on-1 tidak broadcast balik ke sender, kita masukkan manual.
+            // Tenang saja, logic deduplikasi di useChatSocket akan mencegah duplikasi jika nanti ada event masuk.
+            if (sentMessage) {
+                setMessages((prev) => [...prev, sentMessage]);
             }
-            return updatedList;
-        });
+
+            // 3. Optimistic Update Sidebar
+            setConversations((prev) => {
+                const updatedList = [...prev];
+                const chatIndex = updatedList.findIndex(
+                    (c) =>
+                        (selectedChat.conversationId && c.id === selectedChat.conversationId) ||
+                        (selectedChat.groupId && c.id === selectedChat.groupId) ||
+                        (selectedChat.recipientId && c.recipient?.id === selectedChat.recipientId),
+                );
+
+                const lastMsg = {
+                    id: sentMessage?.id || `temp-${Date.now()}`,
+                    content,
+                    createdAt: new Date(),
+                    senderId: currentUserId,
+                    isRead: false,
+                };
+
+                if (chatIndex !== -1) {
+                    const activeChat = { ...updatedList[chatIndex], lastMessage: lastMsg };
+                    updatedList.splice(chatIndex, 1);
+                    updatedList.unshift(activeChat);
+                }
+                return updatedList;
+            });
+        } catch (error) {
+            console.error("Failed to send message:", error);
+        }
     };
 
     return {
