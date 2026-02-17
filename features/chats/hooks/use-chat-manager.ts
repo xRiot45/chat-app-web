@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-// Sesuaikan path import ini
 import { getMessagesQuery } from "../application/queries/get-message-query";
 import { getRecentMessagesQuery } from "../application/queries/get-recent-message-query";
 import { ChatConversation } from "../interfaces/message-interface";
@@ -72,7 +71,7 @@ export const useChatManager = ({ token, currentUserId, selectedChat }: UseChatMa
                     updatedList.splice(existingIndex, 1);
                     updatedList.unshift(chatToUpdate);
                 }
-                // Optional: Fetch ulang jika conversation belum ada di list
+
                 return updatedList;
             });
         };
@@ -113,10 +112,9 @@ export const useChatManager = ({ token, currentUserId, selectedChat }: UseChatMa
     useEffect(() => {
         const loadMessages = async () => {
             if (!selectedChat) return;
-            // Harus ada recipientId atau groupId
             if (!selectedChat.recipientId && !selectedChat.groupId) return;
 
-            setMessages([]); // Reset state pesan
+            setMessages([]);
 
             try {
                 const fetchedMessages = await getMessagesQuery({
@@ -128,7 +126,6 @@ export const useChatManager = ({ token, currentUserId, selectedChat }: UseChatMa
 
                 setMessages(fetchedMessages);
 
-                // Mark as read logic (hanya untuk 1-on-1)
                 if (selectedChat.conversationId && selectedChat.recipientId && !selectedChat.groupId) {
                     markMessageAsRead(selectedChat.conversationId, selectedChat.recipientId);
 
@@ -161,25 +158,19 @@ export const useChatManager = ({ token, currentUserId, selectedChat }: UseChatMa
 
     // --- 5. ACTION: Wrapped Send Message (PERBAIKAN UTAMA DISINI) ---
     const onSendMessage = async (content: string) => {
-        // Ubah jadi async
         if (!selectedChat) return;
 
         try {
-            // 1. Kirim pesan dan tunggu balasan ACK (berisi pesan yang sudah disimpan di DB)
             const sentMessage = await sendMessage({
                 content,
                 recipientId: selectedChat.recipientId,
                 groupId: selectedChat.groupId,
             });
 
-            // 2. MANUAL UPDATE UI SENDER
-            // Karena backend 1-on-1 tidak broadcast balik ke sender, kita masukkan manual.
-            // Tenang saja, logic deduplikasi di useChatSocket akan mencegah duplikasi jika nanti ada event masuk.
             if (sentMessage) {
                 setMessages((prev) => [...prev, sentMessage]);
             }
 
-            // 3. Optimistic Update Sidebar
             setConversations((prev) => {
                 const updatedList = [...prev];
                 const chatIndex = updatedList.findIndex(
