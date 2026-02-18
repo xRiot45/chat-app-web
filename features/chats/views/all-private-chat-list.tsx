@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { API_BASE_URL } from "@/configs/api-base-url";
 import { ActivePrivateChat } from "@/features/chats/interfaces";
 import { Contact } from "@/features/contacts/interfaces/contact";
 import { formatTime } from "@/helpers/format-time";
@@ -73,6 +74,8 @@ export default function AllPrivateChatList({
                     const unreadCount = chat.unreadCount ?? 0;
                     const isSelected = selectedPrivateChat?.conversationId === chat.id;
 
+                    console.log(chat?.partner?.avatarUrl);
+
                     return (
                         <div
                             key={chat.id}
@@ -85,7 +88,11 @@ export default function AllPrivateChatList({
                             )}
                         >
                             <Avatar className="w-12 h-12 border-2 border-transparent group-hover:border-indigo-500/20 transition-all">
-                                <AvatarImage src={chat.partner?.avatarUrl || ""} className="object-cover" />
+                                <AvatarImage
+                                    src={`${API_BASE_URL}/api/public${chat?.partner?.avatarUrl}` || ""}
+                                    className="object-cover"
+                                    crossOrigin="anonymous"
+                                />
                                 <AvatarFallback
                                     className={cn(
                                         isSelected ? "bg-indigo-500 text-white" : "bg-slate-200 dark:bg-slate-800",

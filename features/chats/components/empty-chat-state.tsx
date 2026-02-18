@@ -11,11 +11,11 @@ export default function EmptyChatState() {
                     <MessageCircle className="w-14 h-14 text-white" />
                 </div>
             </div>
-            <h2 className="text-3xl font-bold mb-3 text-slate-800 dark:text-white">Selamat Datang di Nexus Chat</h2>
+            <h2 className="text-3xl font-bold mb-3 text-slate-800 dark:text-white">Welcome to Nexus Chat</h2>
             <p className="text-slate-500 dark:text-slate-400 max-w-md leading-relaxed mb-8">
-                Platform komunikasi yang aman, cepat, dan modern.
+                A secure, fast and modern communication platform.
                 <br />
-                Mulai percakapan dengan memilih kontak di sebelah kiri.
+                Start a conversation by selecting a contact on the left.
             </p>
         </div>
     );

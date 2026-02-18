@@ -28,7 +28,7 @@ import { createGroupSchema, CreateGroupValues } from "../schemas/create-group-sc
 interface NewGroupModalProps {
     isOpen: boolean;
     onClose: (open: boolean) => void;
-    data: Group | null;
+    data?: Group | null;
 }
 
 export function NewGroupModal({ isOpen, onClose, data }: NewGroupModalProps) {
