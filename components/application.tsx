@@ -12,7 +12,9 @@ export default function Application() {
 
             <div>
                 <h1 className="font-bold text-base leading-tight text-slate-800 dark:text-white">Nexus Chat</h1>
-                <p className="text-[10px] text-slate-500 font-medium leading-none mt-0.5">Platform komunikasi modern</p>
+                <p className="text-[10px] text-slate-500 font-medium leading-none mt-0.5">
+                    Modern Communication Platform
+                </p>
             </div>
         </div>
     );
