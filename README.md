@@ -1,3 +1,5 @@
+![image alt](https://github.com/xRiot45/nexus-chat-frontend/blob/31b8f5e525505fb04e97fff0ac62b72e8fb60a03/thumbnail.png)
+
 # Nexus Chat Frontend Documentation
 
 Nexus Chat is a scalable messaging platform frontend that delivers real-time communication through WebSockets. This project is built with modern React and Next.js tooling to support private chat, group collaboration, stories, and profile management.
@@ -25,15 +27,15 @@ Additional supporting libraries include TanStack Query, React Hook Form, Zod, Ax
 Nexus Chat currently supports the following key features:
 
 - **1-on-1 Chat**
-  - Send and receive direct messages in real time.
+    - Send and receive direct messages in real time.
 - **Group Chat**
-  - Chat with multiple members in shared conversation spaces.
+    - Chat with multiple members in shared conversation spaces.
 - **Contact Management (CRUD)**
-  - Create, view, update, and delete contacts.
+    - Create, view, update, and delete contacts.
 - **Story Management (CRUD)**
-  - Create, view, and delete story content, including story feed/viewer interactions.
+    - Create, view, and delete story content, including story feed/viewer interactions.
 - **Profile Update**
-  - Update user profile information from settings.
+    - Update user profile information from settings.
 
 ## High-Level Project Structure
 
